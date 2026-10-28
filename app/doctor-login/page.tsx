@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 
 export default function DoctorLoginPage() {
-  const router = useRouter();
   const [passkey, setPasskey] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -29,8 +27,9 @@ export default function DoctorLoginPage() {
         throw new Error(data.error || "Authentication failed. Invalid physician passkey.");
       }
 
-      router.push("/doctor");
-      router.refresh();
+      if (res.ok || res.status === 200) {
+        window.location.href = "/doctor";
+      }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Physician authentication failed.");
       setLoading(false);
@@ -123,4 +122,3 @@ export default function DoctorLoginPage() {
     </div>
   );
 }
-

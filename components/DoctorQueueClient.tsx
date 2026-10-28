@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 export type ExtractedMedication = {
   name: string;
+  strength?: string;
   dosage?: string;
   frequency?: string;
+  administration?: string;
   instructions?: string;
   source?: string;
 };
@@ -175,21 +177,25 @@ export default function DoctorQueueClient({
 
   // Normalize extracted medications array
   const rawMeds = selectedAppointment?.parsed_summary?.extracted_medications || [];
-  const normalizedMeds: ExtractedMedication[] = rawMeds.map((m) => {
+  const normalizedMeds: ExtractedMedication[] = rawMeds.map((m: any) => {
     if (typeof m === "string") {
       return {
         name: m,
+        strength: "Standard Dose",
         dosage: "Standard Dose",
         frequency: "Daily",
+        administration: "Take as directed",
         instructions: "Take as directed",
         source: "Handwritten Rx Note",
       };
     }
     return {
       name: m.name || "Medication",
-      dosage: m.dosage || "Standard Dose",
+      strength: m.strength || m.dosage || "Standard Dose",
+      dosage: m.dosage || m.strength || "Standard Dose",
       frequency: m.frequency || "Daily",
-      instructions: m.instructions || "Take as directed",
+      administration: m.administration || m.instructions || "Take as directed",
+      instructions: m.instructions || m.administration || "Take as directed",
       source: m.source || "Handwritten Rx Note",
     };
   });
@@ -680,9 +686,13 @@ export default function DoctorQueueClient({
                                 <span>💊</span>
                                 <span>{med.name}</span>
                               </td>
-                              <td className="px-3.5 py-2.5 text-cyan-300">{med.dosage || "Standard"}</td>
+                              <td className="px-3.5 py-2.5 text-cyan-300">
+                                {med.strength || med.dosage || "Standard"}
+                              </td>
                               <td className="px-3.5 py-2.5 text-slate-300">{med.frequency || "Daily"}</td>
-                              <td className="px-3.5 py-2.5 text-slate-400">{med.instructions || "As directed"}</td>
+                              <td className="px-3.5 py-2.5 text-slate-400">
+                                {med.administration || med.instructions || "As directed"}
+                              </td>
                               <td className="px-3.5 py-2.5 text-slate-400 font-mono text-[10px]">
                                 {med.source || "Handwritten Rx Note"}
                               </td>

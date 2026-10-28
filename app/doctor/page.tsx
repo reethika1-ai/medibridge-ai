@@ -35,7 +35,8 @@ async function DoctorQueueData() {
 
     if (item.summary) {
       try {
-        parsedSummary = JSON.parse(item.summary);
+        parsedSummary =
+          typeof item.summary === "string" ? JSON.parse(item.summary) : item.summary;
         if (parsedSummary && typeof parsedSummary === "object" && parsedSummary.status) {
           status = parsedSummary.status;
         }

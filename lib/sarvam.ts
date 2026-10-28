@@ -11,7 +11,7 @@ async function fallbackToVisionTranscription(
   if (!apiKey) return "";
 
   const visionPrompt =
-    "Extract and transcribe all handwritten and printed clinical text from this document, specifically medication names, strengths, dosages, frequencies, administration instructions, and lab/imaging report values.";
+    "Read this handwritten prescription image carefully and extract all medication names, strengths, dosages, frequency, and instructions. Output the list clearly.";
 
   const base64Data = `data:${mimeType || "image/png"};base64,${buffer.toString("base64")}`;
   const imageSourceUrl = fileUrl.startsWith("http") ? fileUrl : base64Data;
@@ -110,7 +110,7 @@ export async function extractOcrFromUrl(
     return "";
   }
 
-  const apiKey = process.env.SARVAM_AI_API_KEY || process.env.SARVAM_API_KEY || "";
+  const apiKey = process.env.SARVAM_API_KEY || process.env.SARVAM_AI_API_KEY || "";
   let extractedText = "";
 
   // 1. Submit fetched buffer to Sarvam AI Document Digitization
@@ -125,19 +125,47 @@ export async function extractOcrFromUrl(
       const sarvamPromise = fetch("https://api.sarvam.ai/doc-ai/digitise", {
         method: "POST",
         headers: {
-          "api-subscription-key": apiKey,
+          "api-subscription-key": process.env.SARVAM_API_KEY || process.env.SARVAM_AI_API_KEY || "",
         },
         body: formData,
       });
 
-      const response = await Promise.race([
+      let response = await Promise.race([
         sarvamPromise,
         new Promise<Response | null>((resolve) => setTimeout(() => resolve(null), 4500)),
       ]);
 
+      if (!response || !response.ok) {
+        // Fallback to https://api.sarvam.ai/doc-ai/v1/ocr
+        try {
+          const formDataV1 = new FormData();
+          formDataV1.append("file", blob, filename);
+          formDataV1.append("language", "en-IN");
+          const v1Promise = fetch("https://api.sarvam.ai/doc-ai/v1/ocr", {
+            method: "POST",
+            headers: {
+              "api-subscription-key":
+                process.env.SARVAM_API_KEY || process.env.SARVAM_AI_API_KEY || "",
+            },
+            body: formDataV1,
+          });
+          response = await Promise.race([
+            v1Promise,
+            new Promise<Response | null>((resolve) => setTimeout(() => resolve(null), 4000)),
+          ]);
+        } catch {
+          // Continue to vision fallback
+        }
+      }
+
       if (response && response.ok) {
         const data = await response.json();
-        extractedText = data.extracted_text || data.markdown || "";
+        extractedText =
+          data.extracted_text ||
+          data.markdown ||
+          data.text ||
+          (typeof data.data === "string" ? data.data : data.data?.extracted_text) ||
+          "";
       }
     } catch (err) {
       console.warn("Sarvam AI OCR extraction error:", err);
