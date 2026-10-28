@@ -13,15 +13,25 @@ type AppointmentRecord = {
   symptoms: string | null;
   summary: string | null;
   urgent: boolean;
+  prescription_url?: string | null;
+  report_url?: string | null;
+  document_url?: string | null;
   report_public_id: string | null;
   created_at: string;
   status?: string;
   parsed_summary?: {
+    clinical_observations?: string;
+    extracted_medications?: Array<{ name: string; dosage?: string; frequency?: string }> | string[];
+    diagnostic_findings?: string;
+    urgency_level?: string;
     chief_complaint?: string;
     key_information?: string[];
     summary?: string;
     urgent_flag?: boolean;
     status?: string;
+    prescription_url?: string | null;
+    report_url?: string | null;
+    document_url?: string | null;
   } | null;
 };
 
@@ -344,6 +354,17 @@ function PatientDashboardContent() {
                         </p>
                       </div>
 
+                      {appointment.parsed_summary.clinical_observations && (
+                        <div>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
+                            Clinical Observations
+                          </span>
+                          <p className="mt-1 text-xs text-slate-700 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100 whitespace-pre-line">
+                            {appointment.parsed_summary.clinical_observations}
+                          </p>
+                        </div>
+                      )}
+
                       {appointment.parsed_summary.key_information &&
                         appointment.parsed_summary.key_information.length > 0 && (
                           <div>
@@ -362,6 +383,17 @@ function PatientDashboardContent() {
                             </div>
                           </div>
                         )}
+
+                      {appointment.parsed_summary.diagnostic_findings && (
+                        <div>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
+                            Diagnostic Findings & Imaging
+                          </span>
+                          <p className="mt-1 text-xs text-slate-700 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100 whitespace-pre-line">
+                            {appointment.parsed_summary.diagnostic_findings}
+                          </p>
+                        </div>
+                      )}
 
                       <div>
                         <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
@@ -407,57 +439,107 @@ function PatientDashboardContent() {
                     </span>
                   </div>
 
-                  {appointment.report_public_id ? (
-                    <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-2xl text-blue-700 shadow-inner">
-                          📑
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">
-                            Medical Document Attached
-                          </p>
-                          <p className="text-xs font-mono text-slate-500">
-                            Vault ID: {appointment.report_public_id}
-                          </p>
-                        </div>
-                      </div>
+                  {(() => {
+                    const rxUrl =
+                      appointment.prescription_url ||
+                      appointment.parsed_summary?.prescription_url;
+                    const reportUrl =
+                      appointment.report_url ||
+                      appointment.parsed_summary?.report_url ||
+                      (appointment.report_public_id
+                        ? `https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`
+                        : appointment.document_url ||
+                          appointment.parsed_summary?.document_url);
 
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() =>
-                            setPreviewDocModal(
-                              `https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`
-                            )
-                          }
-                          className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
-                        >
-                          Quick Preview
-                        </button>
-                        <a
-                          href={`https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                        >
-                          Open Direct ↗
-                        </a>
+                    if (!rxUrl && !reportUrl) {
+                      return (
+                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
+                          <div className="text-3xl">📁</div>
+                          <p className="mt-2 text-xs font-medium text-slate-500">
+                            No medical reports or prescriptions attached yet.
+                          </p>
+                          <Link
+                            href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
+                            className="mt-2 inline-block text-xs font-bold text-blue-600 hover:underline"
+                          >
+                            Upload lab results or prescriptions →
+                          </Link>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="mt-4 space-y-3">
+                        {rxUrl && (
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700 shadow-inner">
+                                📄
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-900">
+                                  Previous Prescription
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  Handwritten Rx notes parsed via Sarvam OCR
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setPreviewDocModal(rxUrl)}
+                                className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
+                              >
+                                Preview
+                              </button>
+                              <a
+                                href={rxUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                              >
+                                View / Download ↗
+                              </a>
+                            </div>
+                          </div>
+                        )}
+
+                        {reportUrl && (
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-xl text-indigo-700 shadow-inner">
+                                🩻
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-900">
+                                  Medical Report / Imaging
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  Lab panel, blood tests, or radiology scan
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setPreviewDocModal(reportUrl)}
+                                className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
+                              >
+                                Preview
+                              </button>
+                              <a
+                                href={reportUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                              >
+                                View / Download ↗
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-                      <div className="text-3xl">📁</div>
-                      <p className="mt-2 text-xs font-medium text-slate-500">
-                        No medical reports or prescriptions attached yet.
-                      </p>
-                      <Link
-                        href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                        className="mt-2 inline-block text-xs font-bold text-blue-600 hover:underline"
-                      >
-                        Upload lab results or prescriptions →
-                      </Link>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>

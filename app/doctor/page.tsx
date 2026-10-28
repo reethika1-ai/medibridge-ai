@@ -7,10 +7,12 @@ import DoctorQueueClient, { AppointmentItem } from "@/components/DoctorQueueClie
 
 async function DoctorQueueData() {
   const cookieStore = await cookies();
-  const auth = cookieStore.get("doctor_auth");
+  const auth = cookieStore.get("doctor_auth")?.value;
+  const passkey = cookieStore.get("doctor_passkey")?.value;
 
-  if (auth?.value !== "authenticated") {
-    redirect("/doctor/login");
+  // Protect /doctor: check session or cookie passkey ('medibridge2026')
+  if (auth !== "authenticated" && passkey !== "medibridge2026") {
+    redirect("/doctor-login");
   }
 
   const { data, error } = await supabase
@@ -28,7 +30,7 @@ async function DoctorQueueData() {
   }
 
   const formattedAppointments: AppointmentItem[] = (data || []).map((item) => {
-    let parsedSummary = null;
+    let parsedSummary: any = null;
     let status = "Waiting";
 
     if (item.summary) {
@@ -42,10 +44,31 @@ async function DoctorQueueData() {
       }
     }
 
+    const prescription_url =
+      item.prescription_url || parsedSummary?.prescription_url || null;
+    const report_url =
+      item.report_url ||
+      parsedSummary?.report_url ||
+      (item.report_public_id
+        ? `https://res.cloudinary.com/igssaucs/image/upload/${item.report_public_id}`
+        : null);
+    const document_url =
+      item.document_url ||
+      parsedSummary?.document_url ||
+      report_url ||
+      prescription_url ||
+      null;
+
     return {
       ...item,
       status,
       parsed_summary: parsedSummary,
+      prescription_url,
+      report_url,
+      document_url,
+      age: item.age ?? parsedSummary?.age ?? null,
+      gender: item.gender ?? parsedSummary?.gender ?? null,
+      phone: item.phone ?? parsedSummary?.phone ?? null,
     };
   });
 
@@ -85,7 +108,7 @@ export default function DoctorPage() {
                   Clinical Queue & Triage
                 </h1>
                 <p className="mt-2 max-w-2xl text-slate-300 text-xs sm:text-sm leading-relaxed">
-                  Patients prioritized dynamically using clinical urgency indicators and arrival timestamps. Inspect AI-generated chief complaints, key findings, and attached medical reports.
+                  Patients prioritized dynamically using clinical urgency indicators and arrival timestamps. Inspect Sarvam OCR medications, deep Grok clinical observations, lab findings, and dual document downloads.
                 </p>
               </div>
 
@@ -101,7 +124,7 @@ export default function DoctorPage() {
                   <span className="text-slate-400">Triage Engine</span>
                   <p className="font-bold text-blue-400 flex items-center gap-1.5 mt-0.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                    xAI Grok Active
+                    xAI Grok & Sarvam OCR Active
                   </p>
                 </div>
               </div>

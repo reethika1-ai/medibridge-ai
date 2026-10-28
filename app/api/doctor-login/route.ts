@@ -7,11 +7,12 @@ export async function POST(request: Request) {
     const expectedPassword = process.env.DOCTOR_PASSWORD || "medibridge2026";
 
     if (!password || password !== expectedPassword) {
-      return NextResponse.json({ error: "Invalid physician password." }, { status: 401 });
+      return NextResponse.json({ error: "Invalid physician passkey." }, { status: 401 });
     }
 
     const response = NextResponse.json({ ok: true, message: "Authenticated successfully" });
 
+    // Set authenticated session cookies
     response.cookies.set({
       name: "doctor_auth",
       value: "authenticated",
@@ -19,6 +20,16 @@ export async function POST(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 28800, // 8 hours
+      path: "/",
+    });
+
+    response.cookies.set({
+      name: "doctor_passkey",
+      value: "medibridge2026",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 28800,
       path: "/",
     });
 
@@ -35,6 +46,13 @@ export async function DELETE() {
   const response = NextResponse.json({ ok: true, message: "Logged out" });
   response.cookies.set({
     name: "doctor_auth",
+    value: "",
+    httpOnly: true,
+    maxAge: 0,
+    path: "/",
+  });
+  response.cookies.set({
+    name: "doctor_passkey",
     value: "",
     httpOnly: true,
     maxAge: 0,

@@ -1,4 +1,11 @@
 export async function extractHandwrittenText(fileUrl: string): Promise<string> {
+  return extractOcrFromUrl(fileUrl, "prescription.png");
+}
+
+export async function extractOcrFromUrl(
+  fileUrl: string,
+  filename = "document.png"
+): Promise<string> {
   try {
     if (!fileUrl) return "";
 
@@ -8,13 +15,14 @@ export async function extractHandwrittenText(fileUrl: string): Promise<string> {
     const blob = await fileResponse.blob();
 
     const formData = new FormData();
-    formData.append("file", blob, "prescription.png");
+    formData.append("file", blob, filename);
     formData.append("language", "en-IN");
     formData.append("output_format", "md");
 
     const apiKey = process.env.SARVAM_AI_API_KEY || process.env.SARVAM_API_KEY || "";
     if (!apiKey) return "";
 
+    // Primary Sarvam AI Document Digitization endpoint
     const response = await fetch("https://api.sarvam.ai/doc-ai/digitise", {
       method: "POST",
       headers: {
@@ -44,7 +52,40 @@ export async function extractHandwrittenText(fileUrl: string): Promise<string> {
 
     return "";
   } catch (error) {
-    console.error("Sarvam AI API background extraction error:", error);
+    console.error("Sarvam AI OCR extraction error:", error);
     return ""; // Silent fallback
+  }
+}
+
+/**
+ * Extracts OCR text from both prescription and report files concurrently
+ * with a race condition safeguard so network delays never block the user.
+ */
+export async function extractPrescriptionAndReportOCR(
+  prescriptionUrl?: string | null,
+  reportUrl?: string | null,
+  timeoutMs = 4500
+): Promise<{ prescriptionText: string; reportText: string }> {
+  const tasks: [Promise<string>, Promise<string>] = [
+    prescriptionUrl
+      ? extractOcrFromUrl(prescriptionUrl, "prescription.png")
+      : Promise.resolve(""),
+    reportUrl ? extractOcrFromUrl(reportUrl, "medical_report.png") : Promise.resolve(""),
+  ];
+
+  try {
+    const results = await Promise.race([
+      Promise.all(tasks),
+      new Promise<[string, string]>((resolve) =>
+        setTimeout(() => resolve(["", ""]), timeoutMs)
+      ),
+    ]);
+
+    return {
+      prescriptionText: results[0] || "",
+      reportText: results[1] || "",
+    };
+  } catch {
+    return { prescriptionText: "", reportText: "" };
   }
 }

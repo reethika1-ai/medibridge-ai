@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
-import { extractHandwrittenText } from "@/lib/sarvam";
+import { extractOcrFromUrl } from "@/lib/sarvam";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: "Unsupported file format. Please upload a PDF, JPG, or PNG report." },
+        { error: "Unsupported file format. Please upload a PDF, JPG, or PNG document." },
         { status: 400 }
       );
     }
@@ -51,6 +51,13 @@ export async function POST(request: Request) {
         .replace(/[^A-Za-z0-9-_]/g, "")
         .slice(0, 32) || "MB-PATIENT";
 
+    const docTypeRaw = String(formData.get("doc_type") || formData.get("type") || "doc").toLowerCase();
+    const docType = docTypeRaw.includes("prescription")
+      ? "prescription"
+      : docTypeRaw.includes("report") || docTypeRaw.includes("scan")
+      ? "report"
+      : "document";
+
     // Convert file to Buffer and then base64 Data URI
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -58,20 +65,19 @@ export async function POST(request: Request) {
 
     const uploadResponse = await cloudinary.uploader.upload(base64Data, {
       folder: "medibridge_reports",
-      public_id: `${token}-${Date.now().toString().slice(-6)}`,
+      public_id: `${token}-${docType}-${Date.now().toString().slice(-6)}`,
       resource_type: "auto",
     });
 
-    // Silently extract handwritten prescription text in the background via Sarvam AI
+    // Extract text via Sarvam AI OCR with timeout protection
     let extractedText = "";
     try {
-      // Allow up to 3.5s for fast OCR response without holding up the user's upload flow
+      const filename = docType === "prescription" ? "prescription.png" : "medical_report.png";
       extractedText = await Promise.race([
-        extractHandwrittenText(uploadResponse.secure_url),
-        new Promise<string>((resolve) => setTimeout(() => resolve(""), 3500)),
+        extractOcrFromUrl(uploadResponse.secure_url, filename),
+        new Promise<string>((resolve) => setTimeout(() => resolve(""), 4000)),
       ]);
     } catch {
-      // Silent fallback per strict no-disruption rule
       extractedText = "";
     }
 
@@ -82,6 +88,7 @@ export async function POST(request: Request) {
       url: uploadResponse.secure_url,
       bytes: uploadResponse.bytes,
       format: uploadResponse.format,
+      doc_type: docType,
       extracted_text: extractedText,
     });
   } catch (error) {

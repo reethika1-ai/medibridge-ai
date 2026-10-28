@@ -22,9 +22,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Normalize status and summary for frontend consumers
+    // Normalize status, summary, and dual document URLs for all consumers
     const formattedData = (data || []).map((item) => {
-      let parsedSummary = null;
+      let parsedSummary: Record<string, any> | null = null;
       let status = "Waiting";
 
       if (item.summary) {
@@ -38,10 +38,34 @@ export async function GET(req: Request) {
         }
       }
 
+      const prescription_url =
+        item.prescription_url || parsedSummary?.prescription_url || null;
+      const report_url =
+        item.report_url ||
+        parsedSummary?.report_url ||
+        (item.report_public_id
+          ? `https://res.cloudinary.com/igssaucs/image/upload/${item.report_public_id}`
+          : null);
+      const document_url =
+        item.document_url ||
+        parsedSummary?.document_url ||
+        report_url ||
+        prescription_url ||
+        null;
+      const age = item.age ?? parsedSummary?.age ?? null;
+      const gender = item.gender ?? parsedSummary?.gender ?? null;
+      const phone = item.phone ?? parsedSummary?.phone ?? null;
+
       return {
         ...item,
         status,
         parsed_summary: parsedSummary,
+        prescription_url,
+        report_url,
+        document_url,
+        age,
+        gender,
+        phone,
       };
     });
 
@@ -65,31 +89,84 @@ export async function POST(req: Request) {
       );
     }
 
-    let initialSummary = body.summary ?? null;
-    if (initialSummary && typeof initialSummary === "object") {
-      initialSummary = JSON.stringify({ ...initialSummary, status: body.status || "Waiting" });
+    // Prepare unified summary object containing clinical triage and document links
+    let summaryObj: Record<string, any> = {};
+    if (body.summary) {
+      if (typeof body.summary === "object") {
+        summaryObj = { ...body.summary };
+      } else {
+        try {
+          summaryObj = JSON.parse(body.summary);
+        } catch {
+          summaryObj = { summary: body.summary };
+        }
+      }
     }
 
-    const { data, error } = await supabase
-      .from("appointments")
-      .insert({
+    summaryObj.status = body.status || summaryObj.status || "Waiting";
+    if (body.prescription_url) summaryObj.prescription_url = body.prescription_url;
+    if (body.report_url) summaryObj.report_url = body.report_url;
+    if (body.document_url) summaryObj.document_url = body.document_url;
+    if (body.age !== undefined) summaryObj.age = body.age;
+    if (body.gender !== undefined) summaryObj.gender = body.gender;
+    if (body.phone !== undefined) summaryObj.phone = body.phone;
+
+    const summaryPayload = JSON.stringify(summaryObj);
+
+    // Attempt insert with extra fields, falling back to core schema if columns are not present in Supabase table
+    const fullPayload: Record<string, any> = {
+      token: body.token,
+      patient_name: body.patient_name,
+      department: body.department,
+      appointment_date: body.appointment_date,
+      symptoms: body.symptoms ?? null,
+      summary: summaryPayload,
+      urgent: body.urgent ?? false,
+      report_public_id: body.report_public_id ?? null,
+    };
+
+    if (body.prescription_url !== undefined) fullPayload.prescription_url = body.prescription_url;
+    if (body.report_url !== undefined) fullPayload.report_url = body.report_url;
+    if (body.document_url !== undefined) fullPayload.document_url = body.document_url;
+    if (body.age !== undefined) fullPayload.age = body.age;
+    if (body.gender !== undefined) fullPayload.gender = body.gender;
+    if (body.phone !== undefined) fullPayload.phone = body.phone;
+
+    let { data, error } = await supabase.from("appointments").insert(fullPayload).select().single();
+
+    if (error && (error.message.includes("column") || error.code === "PGRST204" || error.code === "42703")) {
+      const corePayload = {
         token: body.token,
         patient_name: body.patient_name,
         department: body.department,
         appointment_date: body.appointment_date,
         symptoms: body.symptoms ?? null,
-        summary: initialSummary,
+        summary: summaryPayload,
         urgent: body.urgent ?? false,
         report_public_id: body.report_public_id ?? null,
-      })
-      .select()
-      .single();
+      };
+      const fallbackRes = await supabase.from("appointments").insert(corePayload).select().single();
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({
+      ok: true,
+      data: {
+        ...data,
+        prescription_url: body.prescription_url || summaryObj.prescription_url,
+        report_url: body.report_url || summaryObj.report_url,
+        document_url: body.document_url || summaryObj.document_url,
+        age: body.age ?? summaryObj.age,
+        gender: body.gender ?? summaryObj.gender,
+        phone: body.phone ?? summaryObj.phone,
+        parsed_summary: summaryObj,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to save appointment" },
@@ -107,69 +184,103 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: "Token is required to update an appointment" }, { status: 400 });
     }
 
-    const updatePayload: Record<string, unknown> = {};
+    // Fetch current appointment to merge summary safely
+    const { data: existing } = await supabase
+      .from("appointments")
+      .select("*")
+      .eq("token", token)
+      .single();
 
-    if (body.symptoms !== undefined) {
-      updatePayload.symptoms = body.symptoms;
-    }
-    if (body.urgent !== undefined) {
-      updatePayload.urgent = Boolean(body.urgent);
-    }
-    if (body.report_public_id !== undefined) {
-      updatePayload.report_public_id = body.report_public_id;
+    let summaryObj: Record<string, any> = {};
+    if (existing?.summary) {
+      try {
+        summaryObj = JSON.parse(existing.summary);
+      } catch {
+        summaryObj = { summary: existing.summary };
+      }
     }
 
-    // Check if status or summary needs update
-    if (body.status !== undefined || body.summary !== undefined) {
-      // Fetch current summary if we are only changing status or merging
-      let summaryObj: Record<string, unknown> = {};
-      if (body.summary) {
-        if (typeof body.summary === "object") {
-          summaryObj = { ...body.summary };
-        } else {
-          try {
-            summaryObj = JSON.parse(body.summary);
-          } catch {
-            summaryObj = { summary: body.summary };
-          }
-        }
+    if (body.summary) {
+      if (typeof body.summary === "object") {
+        summaryObj = { ...summaryObj, ...body.summary };
       } else {
-        const { data: existing } = await supabase
-          .from("appointments")
-          .select("summary")
-          .eq("token", token)
-          .single();
-
-        if (existing?.summary) {
-          try {
-            summaryObj = JSON.parse(existing.summary);
-          } catch {
-            summaryObj = { summary: existing.summary };
-          }
+        try {
+          summaryObj = { ...summaryObj, ...JSON.parse(body.summary) };
+        } catch {
+          summaryObj.summary = body.summary;
         }
       }
-
-      if (body.status !== undefined) {
-        summaryObj.status = body.status;
-      } else if (!summaryObj.status) {
-        summaryObj.status = "Waiting";
-      }
-
-      updatePayload.summary = JSON.stringify(summaryObj);
     }
 
-    const { data, error } = await supabase
+    if (body.status !== undefined) {
+      summaryObj.status = body.status;
+    } else if (!summaryObj.status) {
+      summaryObj.status = "Waiting";
+    }
+
+    if (body.prescription_url) summaryObj.prescription_url = body.prescription_url;
+    if (body.report_url) summaryObj.report_url = body.report_url;
+    if (body.document_url) summaryObj.document_url = body.document_url;
+    if (body.age !== undefined) summaryObj.age = body.age;
+    if (body.gender !== undefined) summaryObj.gender = body.gender;
+    if (body.phone !== undefined) summaryObj.phone = body.phone;
+
+    const updatePayload: Record<string, any> = {
+      summary: JSON.stringify(summaryObj),
+    };
+
+    if (body.symptoms !== undefined) updatePayload.symptoms = body.symptoms;
+    if (body.urgent !== undefined) updatePayload.urgent = Boolean(body.urgent);
+    if (body.report_public_id !== undefined) updatePayload.report_public_id = body.report_public_id;
+    if (body.prescription_url !== undefined) updatePayload.prescription_url = body.prescription_url;
+    if (body.report_url !== undefined) updatePayload.report_url = body.report_url;
+    if (body.document_url !== undefined) updatePayload.document_url = body.document_url;
+    if (body.age !== undefined) updatePayload.age = body.age;
+    if (body.gender !== undefined) updatePayload.gender = body.gender;
+    if (body.phone !== undefined) updatePayload.phone = body.phone;
+
+    let { data, error } = await supabase
       .from("appointments")
       .update(updatePayload)
       .eq("token", token)
       .select()
       .single();
 
+    if (error && (error.message.includes("column") || error.code === "PGRST204" || error.code === "42703")) {
+      const coreUpdate: Record<string, any> = {
+        summary: JSON.stringify(summaryObj),
+      };
+      if (body.symptoms !== undefined) coreUpdate.symptoms = body.symptoms;
+      if (body.urgent !== undefined) coreUpdate.urgent = Boolean(body.urgent);
+      if (body.report_public_id !== undefined) coreUpdate.report_public_id = body.report_public_id;
+
+      const fallbackRes = await supabase
+        .from("appointments")
+        .update(coreUpdate)
+        .eq("token", token)
+        .select()
+        .single();
+      data = fallbackRes.data;
+      error = fallbackRes.error;
+    }
+
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({
+      ok: true,
+      data: {
+        ...data,
+        prescription_url: body.prescription_url || summaryObj.prescription_url,
+        report_url: body.report_url || summaryObj.report_url,
+        document_url: body.document_url || summaryObj.document_url,
+        age: body.age ?? summaryObj.age,
+        gender: body.gender ?? summaryObj.gender,
+        phone: body.phone ?? summaryObj.phone,
+        parsed_summary: summaryObj,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update appointment" },
