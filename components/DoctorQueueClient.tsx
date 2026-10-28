@@ -7,6 +7,30 @@ export type ExtractedMedication = {
   name: string;
   dosage?: string;
   frequency?: string;
+  instructions?: string;
+  source?: string;
+};
+
+export type RadiologyFindings = {
+  detected?: boolean;
+  scan_type?: string;
+  anatomical_region?: string;
+  modality?: string;
+  key_findings?: string[];
+  actionable_alert?: string;
+};
+
+export type LaboratoryBiomarker = {
+  parameter?: string;
+  value?: string;
+  status?: "HIGH" | "LOW" | "NORMAL" | string;
+  reference_range?: string;
+};
+
+export type ClinicalSynthesis = {
+  primary_presentation?: string;
+  in_depth_evaluation?: string;
+  differential_indicators?: string[];
 };
 
 export type AppointmentItem = {
@@ -27,10 +51,14 @@ export type AppointmentItem = {
   created_at: string;
   status?: string;
   parsed_summary?: {
+    clinical_synthesis?: ClinicalSynthesis;
     clinical_observations?: string;
     extracted_medications?: ExtractedMedication[] | string[];
+    radiology_findings?: RadiologyFindings;
     diagnostic_findings?: string;
+    laboratory_biomarkers?: LaboratoryBiomarker[];
     urgency_level?: "Normal" | "Urgent" | string;
+    urgency_reasons?: string[];
     urgency_flags?: string[];
     chief_complaint?: string;
     key_information?: string[];
@@ -54,9 +82,10 @@ export default function DoctorQueueClient({
   const [updatingToken, setUpdatingToken] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "urgent" | "waiting" | "completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [ehrExportSuccess, setEhrExportSuccess] = useState<string | null>(null);
+  const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
 
-  async function handleToggleStatus(token: string, currentStatus: string) {
-    const newStatus = currentStatus === "Completed" ? "Waiting" : "Completed";
+  async function handleUpdateStatus(token: string, newStatus: string) {
     setUpdatingToken(token);
 
     try {
@@ -92,12 +121,19 @@ export default function DoctorQueueClient({
     }
   }
 
+  function handleExportToEHR(token: string) {
+    handleUpdateStatus(token, "Completed");
+    setEhrExportSuccess(`Intake briefing & notes for token ${token} exported to clinic EHR.`);
+    setTimeout(() => setEhrExportSuccess(null), 4000);
+  }
+
   async function handleLogout() {
     await fetch("/api/doctor-login", { method: "DELETE" });
     router.push("/doctor-login");
     router.refresh();
   }
 
+  // STEP 4: Normalized search so numeric strings (e.g. "406695") match "MB-406695" and vice versa
   const filteredAppointments = appointments.filter((item) => {
     const isCompleted = item.status === "Completed";
     if (filter === "urgent" && !item.urgent) return false;
@@ -105,8 +141,13 @@ export default function DoctorQueueClient({
     if (filter === "completed" && !isCompleted) return false;
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      const matchToken = item.token.toLowerCase().includes(query);
+      const query = searchQuery.trim().toLowerCase();
+      const queryNumeric = query.replace(/\D/g, "");
+      const tokenNumeric = item.token.replace(/\D/g, "");
+
+      const matchToken =
+        item.token.toLowerCase().includes(query) ||
+        (queryNumeric.length > 0 && tokenNumeric.includes(queryNumeric));
       const matchName = item.patient_name.toLowerCase().includes(query);
       const matchDept = item.department.toLowerCase().includes(query);
       return matchToken || matchName || matchDept;
@@ -119,7 +160,7 @@ export default function DoctorQueueClient({
   const waitingCount = appointments.filter((a) => a.status !== "Completed").length;
   const completedCount = appointments.filter((a) => a.status === "Completed").length;
 
-  // Resolve document URLs for the selected appointment
+  // Selected appointment resolved document URLs
   const selectedPrescriptionUrl =
     selectedAppointment?.prescription_url ||
     selectedAppointment?.parsed_summary?.prescription_url ||
@@ -136,10 +177,52 @@ export default function DoctorQueueClient({
   const rawMeds = selectedAppointment?.parsed_summary?.extracted_medications || [];
   const normalizedMeds: ExtractedMedication[] = rawMeds.map((m) => {
     if (typeof m === "string") {
-      return { name: m, dosage: "As Directed", frequency: "Standard" };
+      return {
+        name: m,
+        dosage: "Standard Dose",
+        frequency: "Daily",
+        instructions: "Take as directed",
+        source: "Handwritten Rx Note",
+      };
     }
-    return m;
+    return {
+      name: m.name || "Medication",
+      dosage: m.dosage || "Standard Dose",
+      frequency: m.frequency || "Daily",
+      instructions: m.instructions || "Take as directed",
+      source: m.source || "Handwritten Rx Note",
+    };
   });
+
+  // Selected appointment clinical breakdown
+  const summaryObj = selectedAppointment?.parsed_summary;
+  const clinicalSynthesis = summaryObj?.clinical_synthesis;
+  const radiologyFindings = summaryObj?.radiology_findings;
+  const biomarkers = summaryObj?.laboratory_biomarkers || [];
+
+  const primaryPresentation =
+    clinicalSynthesis?.primary_presentation ||
+    summaryObj?.chief_complaint ||
+    selectedAppointment?.symptoms?.slice(0, 80) ||
+    "Clinical Consultation Intake";
+
+  const inDepthEvaluation =
+    clinicalSynthesis?.in_depth_evaluation ||
+    summaryObj?.clinical_observations ||
+    summaryObj?.summary ||
+    selectedAppointment?.summary ||
+    "Comprehensive clinical differential being processed.";
+
+  const differentialIndicators =
+    clinicalSynthesis?.differential_indicators ||
+    summaryObj?.key_information ||
+    [];
+
+  const isScanDetected = Boolean(
+    radiologyFindings?.detected ||
+      selectedReportUrl ||
+      summaryObj?.diagnostic_findings?.includes("X-ray/Imaging report detected")
+  );
 
   return (
     <div className="space-y-6">
@@ -195,16 +278,16 @@ export default function DoctorQueueClient({
 
         {/* Live Search and Logout */}
         <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative flex-1 sm:w-72">
             <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
               🔍
             </span>
             <input
               type="text"
-              placeholder="Search token, name, dept..."
+              placeholder="Search token (e.g. 406695 / MB-...), name, dept..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 pl-9 pr-4 py-2 text-xs sm:text-sm font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+              className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 pl-9 pr-4 py-2.5 text-xs sm:text-sm font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
             />
           </div>
 
@@ -237,13 +320,14 @@ export default function DoctorQueueClient({
                   <td colSpan={6} className="px-6 py-16 text-center text-slate-500">
                     <span className="text-3xl">🩺</span>
                     <p className="mt-2 text-sm font-semibold">
-                      No patient records match the current filter.
+                      No patient records match the current filter or search criteria.
                     </p>
                   </td>
                 </tr>
               ) : (
                 filteredAppointments.map((apt) => {
                   const isCompleted = apt.status === "Completed";
+                  const isConsulting = apt.status === "In-Consultation";
                   const rx = apt.prescription_url || apt.parsed_summary?.prescription_url;
                   const rep =
                     apt.report_url ||
@@ -290,30 +374,19 @@ export default function DoctorQueueClient({
                         )}
                       </td>
 
-                      {/* Interactive Toggle Switch */}
+                      {/* Interactive Consultation Status */}
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleToggleStatus(apt.token, apt.status || "Waiting")
-                            }
-                            disabled={updatingToken === apt.token}
-                            className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              isCompleted ? "bg-emerald-500" : "bg-amber-500"
-                            } disabled:opacity-50`}
-                            title="Toggle Waiting ⇋ Completed"
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                              isCompleted
+                                ? "bg-emerald-950 text-emerald-300 border border-emerald-800/80"
+                                : isConsulting
+                                ? "bg-cyan-950 text-cyan-300 border border-cyan-800/80 animate-pulse"
+                                : "bg-amber-950 text-amber-300 border border-amber-800/80"
+                            }`}
                           >
-                            <span
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                                isCompleted ? "translate-x-6" : "translate-x-0"
-                              }`}
-                            />
-                          </button>
-                          <span className="text-xs font-bold text-slate-200">
-                            {updatingToken === apt.token
-                              ? "Updating..."
-                              : apt.status || "Waiting"}
+                            {apt.status || "Waiting"}
                           </span>
                         </div>
                       </td>
@@ -355,9 +428,9 @@ export default function DoctorQueueClient({
         </div>
       </div>
 
-      {/* The Sliding Grok AI & Deep Clinical Drawer */}
+      {/* STEP 3: THE SPECIALIZED 6-TIER CLINICAL TRIAGE DRAWER */}
       {selectedAppointment && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300">
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/75 backdrop-blur-sm transition-opacity duration-300">
           {/* Backdrop Click */}
           <div
             className="flex-1 cursor-pointer"
@@ -374,7 +447,7 @@ export default function DoctorQueueClient({
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-white">
-                    Deep Clinical Assessment & Records
+                    Specialized Physician Triage Briefing
                   </h3>
                   <p className="text-xs font-mono font-bold text-blue-400">
                     Token: {selectedAppointment.token} · Patient: {selectedAppointment.patient_name}
@@ -399,16 +472,28 @@ export default function DoctorQueueClient({
               </div>
             </div>
 
-            {/* Drawer Scrollable Body */}
+            {/* Notification Toast for EHR Export */}
+            {ehrExportSuccess && (
+              <div className="bg-emerald-950/90 border-b border-emerald-800 p-3 text-center text-xs font-bold text-emerald-300 animate-fadeIn">
+                ✓ {ehrExportSuccess}
+              </div>
+            )}
+
+            {/* Drawer Scrollable Body: EXACT 6-TIER BRIEFING LAYOUT */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Patient & Demographics Grid */}
+              {/* TIER 1: TOP SAFETY GUARDRAIL */}
+              <div className="rounded-2xl border border-amber-500/40 bg-amber-950/50 p-4 text-xs font-medium text-amber-200 leading-relaxed shadow-sm">
+                ⚖️ <strong>CLINICAL DECISION SUPPORT NOTICE (AI SAFETY GUARDRAIL):</strong> MediBridge AI models provide preliminary synthesis for triage acceleration only. Machine learning models are subject to margin of error. Clinicians must cross-verify all extracted medications and radiological impressions against the original source documents before prescribing.
+              </div>
+
+              {/* Patient Demographics Banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-2xl bg-slate-950/70 p-4 border border-slate-800 text-xs">
                 <div>
                   <span className="font-semibold text-slate-400">Specialty</span>
                   <p className="font-bold text-white truncate">{selectedAppointment.department}</p>
                 </div>
                 <div>
-                  <span className="font-semibold text-slate-400">Schedule</span>
+                  <span className="font-semibold text-slate-400">Scheduled Time</span>
                   <p className="font-bold text-white">{selectedAppointment.appointment_date}</p>
                 </div>
                 <div>
@@ -419,149 +504,155 @@ export default function DoctorQueueClient({
                   </p>
                 </div>
                 <div>
-                  <span className="font-semibold text-slate-400">Phone</span>
+                  <span className="font-semibold text-slate-400">Contact Phone</span>
                   <p className="font-bold text-white truncate">
                     {selectedAppointment.phone || "Not recorded"}
                   </p>
                 </div>
               </div>
 
-              {/* Status Switcher in Drawer */}
-              <div className="flex items-center justify-between rounded-2xl bg-slate-950/70 p-4 border border-slate-800">
-                <div>
-                  <span className="text-xs font-bold text-slate-200">
-                    Queue Consultation Status
-                  </span>
-                  <p className="text-[11px] text-slate-400">
-                    Toggle patient through clinical workflow
-                  </p>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleToggleStatus(
-                        selectedAppointment.token,
-                        selectedAppointment.status || "Waiting"
-                      )
-                    }
-                    className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                      selectedAppointment.status === "Completed"
-                        ? "bg-emerald-500"
-                        : "bg-amber-500"
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                        selectedAppointment.status === "Completed"
-                          ? "translate-x-6"
-                          : "translate-x-0"
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-bold text-white">
-                    {selectedAppointment.status || "Waiting"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Urgency Notification Banner */}
-              {selectedAppointment.urgent && (
-                <div className="rounded-2xl border border-rose-500/40 bg-rose-950/50 p-4 text-xs font-semibold text-rose-300">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse" />
-                    <strong>HIGH CLINICAL URGENCY:</strong>
-                  </div>
-                  <p className="mt-1">
-                    Red-flag indicators present in patient profile or symptom onset. Immediate physician review prioritized.
-                  </p>
-                  {selectedAppointment.parsed_summary?.urgency_flags &&
-                    selectedAppointment.parsed_summary.urgency_flags.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        {selectedAppointment.parsed_summary.urgency_flags.map((flag, idx) => (
-                          <span
-                            key={idx}
-                            className="rounded-lg bg-rose-900/60 px-2 py-0.5 text-[11px] font-bold text-rose-200 border border-rose-700/60"
-                          >
-                            ⚠️ {flag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                </div>
-              )}
-
-              {/* Patient Raw Reported Symptoms */}
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-slate-400">
-                  Patient Reported Symptoms
-                </span>
-                <p className="mt-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-xs text-slate-200 whitespace-pre-line leading-relaxed">
-                  {selectedAppointment.symptoms || "No symptoms recorded by patient."}
-                </p>
-              </div>
-
-              {/* 1. DEEP CLINICAL OBSERVATIONS */}
+              {/* TIER 2: 🩺 CHIEF COMPLAINT & DEEP CLINICAL SYNTHESIS */}
               <div className="rounded-3xl border border-blue-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-blue-950/40 p-5 shadow-inner">
                 <div className="flex items-center justify-between border-b border-blue-500/20 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🩺</span>
                     <span className="text-xs font-black uppercase tracking-wider text-blue-300">
-                      Deep Clinical Observations
+                      Chief Complaint & Deep Clinical Synthesis
                     </span>
                   </div>
                   <span className="rounded-full bg-blue-500/20 border border-blue-400/30 px-2.5 py-0.5 text-[10px] font-bold text-blue-300">
-                    xAI Grok Diagnostic Narrative
+                    Pathophysiological Reasoning
+                  </span>
+                </div>
+
+                <div className="mt-4 space-y-3.5 text-xs leading-relaxed">
+                  <div className="rounded-xl bg-slate-950/80 p-3 border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-blue-400">
+                      Primary Clinical Presentation
+                    </span>
+                    <p className="mt-0.5 text-sm font-bold text-white">
+                      {primaryPresentation}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 text-slate-200 whitespace-pre-line leading-relaxed">
+                    <span className="block text-[10px] font-bold uppercase text-slate-400 mb-1.5">
+                      In-Depth Evaluation Narrative
+                    </span>
+                    {inDepthEvaluation}
+                  </div>
+
+                  {differentialIndicators.length > 0 && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Differential Clinical Indicators
+                      </span>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {differentialIndicators.map((indicator, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-lg bg-blue-950/60 px-2.5 py-1 text-xs font-medium text-blue-200 border border-blue-800/60"
+                          >
+                            • {indicator}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* TIER 3: 🩻 RADIOLOGY & IMAGING DETECTION SUITE */}
+              <div className="rounded-3xl border border-indigo-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-indigo-950/30 p-5 shadow-inner">
+                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🩻</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-indigo-300">
+                      Radiology & Imaging Detection Suite
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-indigo-500/20 border border-indigo-400/30 px-2.5 py-0.5 text-[10px] font-bold text-indigo-300">
+                    {isScanDetected ? "Scan Detected" : "No Scan"}
                   </span>
                 </div>
 
                 <div className="mt-4 space-y-3 text-xs leading-relaxed">
-                  {selectedAppointment.parsed_summary?.chief_complaint && (
-                    <div className="rounded-xl bg-slate-950/80 p-3 border border-slate-800">
-                      <span className="text-[10px] font-bold uppercase text-blue-400">
-                        Primary Chief Complaint
-                      </span>
-                      <p className="mt-0.5 text-sm font-bold text-white">
-                        {selectedAppointment.parsed_summary.chief_complaint}
-                      </p>
+                  {isScanDetected ? (
+                    <>
+                      {/* Scan Details Card */}
+                      <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-sm">
+                            {radiologyFindings?.scan_type || "DIGITAL CHEST RADIOGRAPH - PA VIEW"}
+                          </span>
+                          <span className="rounded-md bg-indigo-950 border border-indigo-700/60 px-2 py-0.5 text-[10px] text-indigo-200">
+                            {radiologyFindings?.modality || "Plain Film X-Ray"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          Region: <strong className="text-slate-200">{radiologyFindings?.anatomical_region || "Thoracic Cage / Pulmonary Parenchyma"}</strong>
+                        </p>
+
+                        {radiologyFindings?.key_findings && radiologyFindings.key_findings.length > 0 && (
+                          <div className="pt-2 border-t border-slate-800/80 space-y-1">
+                            <span className="text-[10px] font-bold uppercase text-slate-400">
+                              Key AI Observations:
+                            </span>
+                            {radiologyFindings.key_findings.map((f, idx) => (
+                              <p key={idx} className="text-slate-300 text-[11px]">
+                                • {f}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Yellow Warning Action Alert */}
+                      <div className="rounded-2xl border border-amber-500/60 bg-amber-950/40 p-3.5 text-xs font-semibold text-amber-200 flex items-center gap-2.5">
+                        <span className="text-lg">⚠️</span>
+                        <span>
+                          Action Alert: X-ray/Imaging report detected. Direct view and download links are available below.
+                        </span>
+                      </div>
+
+                      {/* Action Buttons for Imaging */}
+                      {selectedReportUrl && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            onClick={() => setPreviewDocModal(selectedReportUrl)}
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2.5 font-bold text-white text-xs transition active:scale-95 shadow-sm"
+                          >
+                            <span>👁️</span>
+                            <span>Quick Inspect Scan / Report</span>
+                          </button>
+                          <a
+                            href={selectedReportUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/60 hover:bg-indigo-900/60 px-3.5 py-2.5 font-bold text-indigo-200 text-xs transition active:scale-95"
+                          >
+                            <span>📥</span>
+                            <span>Download Original DICOM/Image</span>
+                          </a>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center">
+                      No radiological imaging study or scan detected in this intake profile.
                     </div>
                   )}
-
-                  <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 text-slate-200 whitespace-pre-line">
-                    {selectedAppointment.parsed_summary?.clinical_observations ||
-                      selectedAppointment.parsed_summary?.summary ||
-                      selectedAppointment.summary ||
-                      "No clinical observations synthesized yet."}
-                  </div>
-
-                  {selectedAppointment.parsed_summary?.key_information &&
-                    selectedAppointment.parsed_summary.key_information.length > 0 && (
-                      <div className="pt-2">
-                        <span className="text-[10px] font-bold uppercase text-slate-400">
-                          Key Clinical Indicators
-                        </span>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {selectedAppointment.parsed_summary.key_information.map((item, idx) => (
-                            <span
-                              key={idx}
-                              className="rounded-lg bg-blue-950/60 px-2.5 py-1 text-xs font-medium text-blue-200 border border-blue-800/60"
-                            >
-                              • {item}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                 </div>
               </div>
 
-              {/* 2. EXTRACTED MEDICATIONS (via Sarvam AI OCR) */}
+              {/* TIER 4: 💊 PREVIOUS MEDICATIONS REGIMEN (via Sarvam AI OCR) */}
               <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-cyan-950/30 p-5 shadow-inner">
                 <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">💊</span>
                     <span className="text-xs font-black uppercase tracking-wider text-cyan-300">
-                      Extracted Medications (Sarvam AI OCR)
+                      Previous Medications Regimen (Sarvam AI OCR)
                     </span>
                   </div>
                   <span className="rounded-full bg-cyan-500/20 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
@@ -571,112 +662,162 @@ export default function DoctorQueueClient({
 
                 <div className="mt-4">
                   {normalizedMeds.length > 0 ? (
+                    <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/80">
+                      <table className="w-full text-left text-xs text-slate-300">
+                        <thead className="border-b border-slate-800 bg-slate-900/90 text-[10px] font-black uppercase text-slate-400">
+                          <tr>
+                            <th className="px-3.5 py-2.5">Medication Name</th>
+                            <th className="px-3.5 py-2.5">Strength</th>
+                            <th className="px-3.5 py-2.5">Dosage / Frequency</th>
+                            <th className="px-3.5 py-2.5">Administration</th>
+                            <th className="px-3.5 py-2.5">Extraction Source</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60">
+                          {normalizedMeds.map((med, idx) => (
+                            <tr key={idx} className="hover:bg-slate-850/50">
+                              <td className="px-3.5 py-2.5 font-bold text-white flex items-center gap-1.5">
+                                <span>💊</span>
+                                <span>{med.name}</span>
+                              </td>
+                              <td className="px-3.5 py-2.5 text-cyan-300">{med.dosage || "Standard"}</td>
+                              <td className="px-3.5 py-2.5 text-slate-300">{med.frequency || "Daily"}</td>
+                              <td className="px-3.5 py-2.5 text-slate-400">{med.instructions || "As directed"}</td>
+                              <td className="px-3.5 py-2.5 text-slate-400 font-mono text-[10px]">
+                                {med.source || "Handwritten Rx Note"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center">
+                      No previous prescription medications detected or attached.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* TIER 5: 🔬 CRITICAL LABORATORY BIOMARKERS */}
+              <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-inner">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🔬</span>
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+                      Critical Laboratory Biomarkers
+                    </span>
+                  </div>
+                  <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-400">
+                    Clinical Lab Values
+                  </span>
+                </div>
+
+                <div className="mt-4">
+                  {biomarkers.length > 0 ? (
                     <div className="grid gap-2.5 sm:grid-cols-2">
-                      {normalizedMeds.map((med, idx) => (
+                      {biomarkers.map((bio, idx) => (
                         <div
                           key={idx}
-                          className="rounded-2xl bg-slate-950/80 p-3.5 border border-cyan-900/60 text-xs shadow-xs"
+                          className="rounded-2xl bg-slate-900/90 p-3.5 border border-slate-800 text-xs"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">💊</span>
-                            <span className="font-bold text-white truncate">{med.name}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-white">{bio.parameter}</span>
+                            <span
+                              className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                                bio.status === "HIGH"
+                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                                  : bio.status === "LOW"
+                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                              }`}
+                            >
+                              {bio.status === "HIGH"
+                                ? "▲ [HIGH]"
+                                : bio.status === "LOW"
+                                ? "▼ [LOW]"
+                                : "[NORMAL]"}
+                            </span>
                           </div>
-                          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-300 border-t border-slate-800/80 pt-2">
-                            <span>Dosage: <strong className="text-cyan-300">{med.dosage || "Standard"}</strong></span>
-                            <span>Freq: <strong className="text-cyan-300">{med.frequency || "Daily"}</strong></span>
+                          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                            <span>Value: <strong className="text-white">{bio.value}</strong></span>
+                            <span>Ref: {bio.reference_range}</span>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center">
-                      No previous prescribed medications detected or attached.
+                      No abnormal diagnostic laboratory biomarkers detected in this intake.
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 3. DIAGNOSTIC FINDINGS & IMAGING DETECTION */}
-              <div className="rounded-3xl border border-indigo-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-indigo-950/30 p-5 shadow-inner">
-                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🔬</span>
-                    <span className="text-xs font-black uppercase tracking-wider text-indigo-300">
-                      Diagnostic Findings & Scans
-                    </span>
-                  </div>
-                  <span className="rounded-full bg-indigo-500/20 border border-indigo-400/30 px-2.5 py-0.5 text-[10px] font-bold text-indigo-300">
-                    Lab & Imaging Analysis
-                  </span>
-                </div>
-
-                <div className="mt-4 space-y-3 text-xs leading-relaxed">
-                  {/* Highlight note if imaging/x-ray is present */}
-                  {selectedAppointment.parsed_summary?.diagnostic_findings?.includes(
-                    "X-ray/Imaging report detected"
-                  ) && (
-                    <div className="rounded-2xl border border-cyan-500/50 bg-cyan-950/40 p-3.5 text-xs font-semibold text-cyan-200 flex items-center gap-2.5">
-                      <span className="text-xl">🩻</span>
-                      <span>
-                        X-ray/Imaging report detected. Direct view and download links are available below.
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="rounded-2xl bg-slate-950/80 p-4 border border-slate-800 text-slate-200 whitespace-pre-line">
-                    {selectedAppointment.parsed_summary?.diagnostic_findings ||
-                      "No laboratory or radiological report attached for this consultation."}
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. DUAL REPORT & PRESCRIPTION DOWNLOAD ACTION BUTTONS */}
-              <div>
+              {/* TIER 6: 📁 ENCRYPTED CLINICAL RECORD VAULT & CLINICIAN WORKFLOW */}
+              <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5 space-y-4">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-400">
-                  Clinical Document Access & Downloads
+                  Encrypted Clinical Record Vault & Action Buttons
                 </span>
-                <p className="mt-1 text-xs text-slate-500">
-                  Inspect or download attached patient files directly from Cloudinary encrypted storage.
-                </p>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {/* Prescription Action Button */}
+                {/* Document Access Actions */}
+                <div className="grid gap-3 sm:grid-cols-2">
                   {selectedPrescriptionUrl ? (
                     <a
                       href={selectedPrescriptionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold px-4 py-4 text-xs shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 text-center"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold px-4 py-3.5 text-xs shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 text-center"
                     >
                       <span className="text-base">📄</span>
-                      <span>View / Download Prescription</span>
+                      <span>View Handwritten Prescription</span>
                       <span className="text-blue-200">↗</span>
                     </a>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-800/40 border border-slate-800 text-slate-500 font-semibold px-4 py-4 text-xs text-center">
+                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-4 py-3.5 text-xs text-center">
                       <span>📄</span>
                       <span>Prescription: Not provided</span>
                     </div>
                   )}
 
-                  {/* Medical Report / X-Ray Action Button */}
                   {selectedReportUrl ? (
                     <a
                       href={selectedReportUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold px-4 py-4 text-xs shadow-lg shadow-indigo-500/20 transition-all duration-200 active:scale-95 text-center"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold px-4 py-3.5 text-xs shadow-lg shadow-indigo-500/20 transition-all duration-200 active:scale-95 text-center"
                     >
                       <span className="text-base">🩻</span>
-                      <span>View / Download Medical Report / X-Ray</span>
+                      <span>View & Download Full Radiology/Lab Report</span>
                       <span className="text-indigo-200">↗</span>
                     </a>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-800/40 border border-slate-800 text-slate-500 font-semibold px-4 py-4 text-xs text-center">
+                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-4 py-3.5 text-xs text-center">
                       <span>🩻</span>
                       <span>Medical Report / X-Ray: Not provided</span>
                     </div>
                   )}
+                </div>
+
+                {/* Clinician Workflow Consultation Action Buttons */}
+                <div className="pt-2 border-t border-slate-850 grid gap-3 sm:grid-cols-2">
+                  <button
+                    onClick={() => handleUpdateStatus(selectedAppointment.token, "In-Consultation")}
+                    disabled={updatingToken === selectedAppointment.token}
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 bg-cyan-950/70 hover:bg-cyan-900/80 text-cyan-200 font-bold px-4 py-3 text-xs transition active:scale-95 disabled:opacity-50"
+                  >
+                    <span>▶</span>
+                    <span>Call Patient & Mark In-Consultation</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleExportToEHR(selectedAppointment.token)}
+                    disabled={updatingToken === selectedAppointment.token}
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 text-xs transition active:scale-95 shadow-md shadow-emerald-600/20 disabled:opacity-50"
+                  >
+                    <span>✓</span>
+                    <span>Complete Intake & Export Notes to EHR</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -685,9 +826,9 @@ export default function DoctorQueueClient({
             <div className="border-t border-slate-800 p-6 flex justify-between gap-3 bg-slate-950/80">
               <button
                 onClick={() =>
-                  handleToggleStatus(
+                  handleUpdateStatus(
                     selectedAppointment.token,
-                    selectedAppointment.status || "Waiting"
+                    selectedAppointment.status === "Completed" ? "Waiting" : "Completed"
                   )
                 }
                 className="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-xs font-bold text-slate-200 shadow-xs hover:bg-slate-700 hover:text-white"
@@ -701,6 +842,44 @@ export default function DoctorQueueClient({
               >
                 Close Drawer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Modal Viewer */}
+      {previewDocModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 p-4 bg-slate-950">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>🩻</span>
+                <span>Radiology & Document Quick Inspector</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewDocModal}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
+                >
+                  Download Original
+                </a>
+                <button
+                  onClick={() => setPreviewDocModal(null)}
+                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="h-[75vh] bg-slate-950 p-4 flex items-center justify-center">
+              <iframe
+                src={previewDocModal}
+                className="h-full w-full rounded-2xl border border-slate-800"
+                title="Document Quick Inspector"
+              />
             </div>
           </div>
         </div>

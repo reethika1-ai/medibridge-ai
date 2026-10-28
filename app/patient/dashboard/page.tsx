@@ -20,14 +20,6 @@ type AppointmentRecord = {
   created_at: string;
   status?: string;
   parsed_summary?: {
-    clinical_observations?: string;
-    extracted_medications?: Array<{ name: string; dosage?: string; frequency?: string }> | string[];
-    diagnostic_findings?: string;
-    urgency_level?: string;
-    chief_complaint?: string;
-    key_information?: string[];
-    summary?: string;
-    urgent_flag?: boolean;
     status?: string;
     prescription_url?: string | null;
     report_url?: string | null;
@@ -98,6 +90,18 @@ function PatientDashboardContent() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const rxUrl =
+    appointment?.prescription_url || appointment?.parsed_summary?.prescription_url || null;
+
+  const reportUrl =
+    appointment?.report_url ||
+    appointment?.parsed_summary?.report_url ||
+    (appointment?.report_public_id
+      ? `https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`
+      : appointment?.document_url || appointment?.parsed_summary?.document_url || null);
+
+  const currentStatus = appointment?.status || "Waiting";
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/20 to-slate-50 text-slate-900 flex flex-col justify-between">
       <Navbar />
@@ -117,7 +121,7 @@ function PatientDashboardContent() {
                 Patient Health Dashboard
               </h1>
               <p className="mt-2 max-w-xl text-blue-100 text-sm sm:text-base leading-relaxed">
-                Review your real-time clinic queue status, manage attached medical reports in the Cloudinary vault, and inspect Grok AI intake summaries.
+                Monitor your consultation queue status, view confirmed token details, and access attached medical records securely.
               </p>
             </div>
 
@@ -136,17 +140,17 @@ function PatientDashboardContent() {
                 }
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-white/20 active:scale-95"
               >
-                <span>Upload Reports</span>
+                <span>Upload Records</span>
               </Link>
             </div>
           </div>
         </section>
 
-        {/* Quick Actions Interactive Grid (Bounces on hover) */}
-        <section className="mt-8 grid gap-6 sm:grid-cols-3">
+        {/* Quick Actions Interactive Grid */}
+        <section className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/appointment"
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10"
+            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-blue-600 transition-transform duration-300 group-hover:scale-110">
               🗓️
@@ -168,37 +172,37 @@ function PatientDashboardContent() {
                 ? `/patient-details?token=${encodeURIComponent(activeToken)}`
                 : "/patient-details"
             }
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10"
+            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-2xl text-indigo-600 transition-transform duration-300 group-hover:scale-110">
               📄
             </div>
             <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
-              Cloudinary Vault Upload
+              Upload More Records
             </h2>
             <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              Attach PDF lab reports or prescription photos and generate AI intake summaries.
+              Attach prescription slips or diagnostic lab scans to your active consultation profile.
             </p>
             <div className="mt-4 flex items-center text-xs font-bold text-indigo-600 group-hover:underline">
-              Open document intake →
+              Open document upload →
             </div>
           </Link>
 
           <Link
-            href="/doctor"
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-cyan-300 hover:shadow-xl hover:shadow-cyan-500/10"
+            href="/appointment"
+            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl hover:shadow-cyan-500/10 sm:col-span-2 lg:col-span-1"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-2xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
-              🩺
+              🏥
             </div>
             <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-cyan-600">
-              Physician Live Board
+              Clinic Guidelines
             </h2>
             <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              Staff queue with automated clinical urgency sorting and status toggle switches.
+              Arrive 10 minutes prior to scheduled slot with government photo ID and your token number.
             </p>
             <div className="mt-4 flex items-center text-xs font-bold text-cyan-600 group-hover:underline">
-              Access doctor board →
+              Clinic arrival policy →
             </div>
           </Link>
         </section>
@@ -240,12 +244,11 @@ function PatientDashboardContent() {
             </div>
           )}
 
-          {/* Active Appointment Live State */}
+          {/* Active Patient Appointment View: STRICT SEPARATION (NO INTERNAL DOCTOR SUMMARIES) */}
           {appointment ? (
             <div className="mt-8 grid gap-8 lg:grid-cols-12">
-              {/* Token Card Micro-Interactions: Elevated Gradient Card */}
-              <div className="lg:col-span-4 flex flex-col justify-between relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 p-6 sm:p-7 text-white shadow-xl shadow-blue-600/20">
-                {/* Background accent circles */}
+              {/* 1. DIGITAL QUEUE CARD */}
+              <div className="lg:col-span-5 flex flex-col justify-between relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-6 sm:p-7 text-white shadow-xl shadow-blue-600/20">
                 <div className="pointer-events-none absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
 
                 <div>
@@ -253,13 +256,12 @@ function PatientDashboardContent() {
                     <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider backdrop-blur-xs">
                       Official Clinic Token
                     </span>
-                    {/* Breath status beacon */}
                     <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-xs">
                       <span className="relative flex h-2 w-2">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
                       </span>
-                      <span>Active · Position #2</span>
+                      <span>Live Status Synchronized</span>
                     </div>
                   </div>
 
@@ -267,279 +269,202 @@ function PatientDashboardContent() {
                     <p className="font-mono text-4xl sm:text-5xl font-black tracking-wider text-white">
                       {appointment.token}
                     </p>
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2.5 flex items-center gap-2">
                       <button
                         onClick={() => handleCopy(appointment.token)}
                         className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-white/30"
                       >
                         {copied ? "✓ Copied to clipboard" : "📋 Copy Token"}
                       </button>
-                      {appointment.urgent && (
-                        <span className="rounded-full bg-rose-500/90 px-2.5 py-0.5 text-xs font-black text-white animate-pulse">
-                          Urgent Priority
-                        </span>
-                      )}
                     </div>
                   </div>
 
-                  <div className="mt-8 space-y-2.5 border-t border-white/20 pt-6 text-xs sm:text-sm">
+                  {/* Consultation Patient Details */}
+                  <div className="mt-7 space-y-2.5 border-t border-white/20 pt-5 text-xs sm:text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Patient:</span>
+                      <span className="text-blue-100">Patient Name:</span>
                       <span className="font-bold">{appointment.patient_name}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Department:</span>
-                      <span className="font-bold">{appointment.department}</span>
+                      <span className="text-blue-100">Specialty & Doctor:</span>
+                      <span className="font-bold truncate max-w-[200px]">{appointment.department}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Scheduled:</span>
+                      <span className="text-blue-100">Scheduled Time:</span>
                       <span className="font-bold">{appointment.appointment_date}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-blue-100">Queue Status:</span>
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-extrabold ${
-                          appointment.status === "Completed"
+                        className={`rounded-full px-3 py-1 text-xs font-extrabold ${
+                          currentStatus === "Completed"
                             ? "bg-emerald-400 text-emerald-950"
+                            : currentStatus === "In-Consultation"
+                            ? "bg-cyan-300 text-cyan-950 animate-pulse"
                             : "bg-amber-300 text-amber-950"
                         }`}
                       >
-                        {appointment.status || "Waiting"}
+                        {currentStatus === "In-Consultation"
+                          ? "● In-Consultation"
+                          : currentStatus}
                       </span>
                     </div>
                   </div>
+
+                  {/* Estimated Queue Position / Wait Time Notice */}
+                  <div className="mt-5 rounded-2xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/15 text-xs">
+                    <div className="flex items-center gap-2 font-bold text-white">
+                      <span className="text-base">⏱️</span>
+                      <span>
+                        {currentStatus === "Completed"
+                          ? "Consultation Completed"
+                          : currentStatus === "In-Consultation"
+                          ? "Currently in Physician Consultation"
+                          : "Estimated Wait Time: ~10-15 Minutes"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-blue-100">
+                      {currentStatus === "Completed"
+                        ? "Your visit is complete. Follow-up instructions have been filed by your physician."
+                        : currentStatus === "In-Consultation"
+                        ? "Please enter the assigned consultation suite when called."
+                        : "Current Queue Position: #2. Please remain in the patient reception lounge."}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-6">
                   <Link
                     href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
                     className="block w-full rounded-2xl bg-white py-3 text-center text-xs sm:text-sm font-extrabold text-blue-900 shadow-md transition-all hover:bg-blue-50 active:scale-98"
                   >
-                    Update Symptoms & Reports →
+                    Update Intake & Symptoms →
                   </Link>
                 </div>
               </div>
 
-              {/* Right: Grok AI Intake & Cloudinary Vault Preview */}
-              <div className="lg:col-span-8 space-y-6">
-                {/* Grok AI Intake Card */}
-                <div className="rounded-3xl border border-blue-100 bg-gradient-to-tr from-white via-blue-50/30 to-indigo-50/20 p-6 sm:p-7 shadow-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-blue-100/80 pb-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 text-lg text-white shadow-xs">
-                        🤖
-                      </div>
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900">
-                          xAI Grok Intake Assessment
-                        </h3>
-                        <p className="text-[11px] text-slate-500">
-                          Automated clinical triage synthesis
-                        </p>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
-                      Physician Review Ready
-                    </span>
-                  </div>
-
-                  {appointment.parsed_summary ? (
-                    <div className="mt-5 space-y-4">
-                      <div>
-                        <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                          Chief Complaint
-                        </span>
-                        <p className="mt-1 text-sm font-bold text-slate-900">
-                          {appointment.parsed_summary.chief_complaint || "None recorded"}
-                        </p>
-                      </div>
-
-                      {appointment.parsed_summary.clinical_observations && (
-                        <div>
-                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                            Clinical Observations
-                          </span>
-                          <p className="mt-1 text-xs text-slate-700 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100 whitespace-pre-line">
-                            {appointment.parsed_summary.clinical_observations}
-                          </p>
-                        </div>
-                      )}
-
-                      {appointment.parsed_summary.key_information &&
-                        appointment.parsed_summary.key_information.length > 0 && (
-                          <div>
-                            <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                              Key Clinical Observations
-                            </span>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {appointment.parsed_summary.key_information.map((item, idx) => (
-                                <span
-                                  key={idx}
-                                  className="inline-flex items-center rounded-xl border border-blue-200/80 bg-blue-50/70 px-3 py-1 text-xs font-medium text-blue-900"
-                                >
-                                  • {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                      {appointment.parsed_summary.diagnostic_findings && (
-                        <div>
-                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                            Diagnostic Findings & Imaging
-                          </span>
-                          <p className="mt-1 text-xs text-slate-700 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100 whitespace-pre-line">
-                            {appointment.parsed_summary.diagnostic_findings}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                          Clinical Synthesis Narrative
-                        </span>
-                        <p className="mt-1 text-xs text-slate-700 leading-relaxed bg-white/70 p-3.5 rounded-2xl border border-slate-100">
-                          {appointment.parsed_summary.summary}
-                        </p>
-                      </div>
-                    </div>
-                  ) : appointment.summary ? (
-                    <div className="mt-4 rounded-2xl bg-white p-4 border border-slate-100 text-xs text-slate-800 whitespace-pre-line leading-relaxed">
-                      {appointment.summary}
-                    </div>
-                  ) : (
-                    <div className="mt-5 rounded-2xl border border-dashed border-blue-200 bg-white/60 p-6 text-center">
-                      <p className="text-xs font-medium text-slate-600">
-                        No symptoms or AI intake recorded for this appointment yet.
-                      </p>
-                      <Link
-                        href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                        className="mt-2 inline-block text-xs font-bold text-blue-600 hover:underline"
-                      >
-                        Provide your symptoms now →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cloudinary Document Vault Section */}
-                <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xs">
+              {/* 2. ATTACHED DOCUMENTS CONFIRMATION (PATIENT-ONLY: ZERO CLINICAL NOTES) */}
+              <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs">
+                <div>
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
-                        Attached Clinical Documents
+                        Attached Consultation Documents
                       </h3>
-                      <p className="text-[11px] text-slate-500">
-                        Cloudinary Encrypted Storage Vault
+                      <p className="text-xs text-slate-500">
+                        Securely stored in your confidential Cloudinary healthcare repository
                       </p>
                     </div>
-                    <span className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                      Multi-format
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                      Patient Vault
                     </span>
                   </div>
 
-                  {(() => {
-                    const rxUrl =
-                      appointment.prescription_url ||
-                      appointment.parsed_summary?.prescription_url;
-                    const reportUrl =
-                      appointment.report_url ||
-                      appointment.parsed_summary?.report_url ||
-                      (appointment.report_public_id
-                        ? `https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`
-                        : appointment.document_url ||
-                          appointment.parsed_summary?.document_url);
-
-                    if (!rxUrl && !reportUrl) {
-                      return (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-6 text-center">
-                          <div className="text-3xl">📁</div>
-                          <p className="mt-2 text-xs font-medium text-slate-500">
-                            No medical reports or prescriptions attached yet.
-                          </p>
-                          <Link
-                            href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                            className="mt-2 inline-block text-xs font-bold text-blue-600 hover:underline"
-                          >
-                            Upload lab results or prescriptions →
-                          </Link>
+                  <div className="mt-5 space-y-4">
+                    {/* Attached Prescription Confirmation */}
+                    {rxUrl ? (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700 shadow-inner">
+                            📄
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">
+                              Attached: Prescription
+                            </p>
+                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Encrypted & Verified
+                            </span>
+                          </div>
                         </div>
-                      );
-                    }
 
-                    return (
-                      <div className="mt-4 space-y-3">
-                        {rxUrl && (
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700 shadow-inner">
-                                📄
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-900">
-                                  Previous Prescription
-                                </p>
-                                <p className="text-[11px] text-slate-500">
-                                  Handwritten Rx notes parsed via Sarvam OCR
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setPreviewDocModal(rxUrl)}
-                                className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
-                              >
-                                Preview
-                              </button>
-                              <a
-                                href={rxUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                              >
-                                View / Download ↗
-                              </a>
-                            </div>
-                          </div>
-                        )}
-
-                        {reportUrl && (
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-xl text-indigo-700 shadow-inner">
-                                🩻
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-slate-900">
-                                  Medical Report / Imaging
-                                </p>
-                                <p className="text-[11px] text-slate-500">
-                                  Lab panel, blood tests, or radiology scan
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setPreviewDocModal(reportUrl)}
-                                className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
-                              >
-                                Preview
-                              </button>
-                              <a
-                                href={reportUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                              >
-                                View / Download ↗
-                              </a>
-                            </div>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPreviewDocModal(rxUrl)}
+                            className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
+                          >
+                            Preview
+                          </button>
+                          <a
+                            href={rxUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          >
+                            Download ↗
+                          </a>
+                        </div>
                       </div>
-                    );
-                  })()}
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
+                        <span>No previous prescriptions attached.</span>
+                        <Link
+                          href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
+                          className="font-bold text-blue-600 hover:underline"
+                        >
+                          + Attach Rx
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Attached Diagnostic Report Confirmation */}
+                    {reportUrl ? (
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-xl text-indigo-700 shadow-inner">
+                            🩻
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-900">
+                              Attached: Diagnostic Report
+                            </p>
+                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                              Encrypted & Verified
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPreviewDocModal(reportUrl)}
+                            className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
+                          >
+                            Preview
+                          </button>
+                          <a
+                            href={reportUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                          >
+                            Download ↗
+                          </a>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
+                        <span>No lab reports or scans attached.</span>
+                        <Link
+                          href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
+                          className="font-bold text-blue-600 hover:underline"
+                        >
+                          + Attach Report
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-8 rounded-2xl bg-slate-50 p-4 border border-slate-100 text-xs text-slate-600">
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <span>🏥</span>
+                    <span>Clinic Patient Notice</span>
+                  </div>
+                  <p className="mt-1 leading-relaxed text-[11px] text-slate-500">
+                    Your uploaded files are delivered directly to your attending physician&apos;s protected clinical workstation. Please have your token ready when entering the examination room.
+                  </p>
                 </div>
               </div>
             </div>

@@ -24,18 +24,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       ok: true,
-      chief_complaint: triageResult.chief_complaint,
-      key_information: triageResult.key_information,
-      summary: triageResult.summary,
-      urgent_flag: triageResult.urgent_flag,
-      clinical_observations: triageResult.clinical_observations,
-      extracted_medications: triageResult.extracted_medications,
-      diagnostic_findings: triageResult.diagnostic_findings,
-      urgency_level: triageResult.urgency_level,
-      urgency_flags: triageResult.urgency_flags,
-      prescription_url: triageResult.prescription_url,
-      report_url: triageResult.report_url,
-      document_url: triageResult.document_url,
+      ...triageResult,
       raw_summary: `${triageResult.chief_complaint}\n\nClinical Observations:\n${triageResult.clinical_observations}\n\nKey Findings:\n${triageResult.key_information.map((k) => `• ${k}`).join("\n")}\n\nSummary:\n${triageResult.summary}`,
     });
   } catch (error) {
