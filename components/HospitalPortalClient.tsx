@@ -214,23 +214,23 @@ export default function HospitalPortalClient({
       {/* ======================================================== */}
       {/* MULTI-DEPARTMENT HIGH-DENSITY TAB NAVIGATION             */}
       {/* ======================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-3xl border border-slate-800/90 bg-slate-900/90 p-2.5 backdrop-blur-md shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-full border border-slate-200/80 bg-white p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
         <div className="flex flex-wrap items-center gap-2">
           {/* Tab 1: Doctor Clinical Triage */}
           <button
             type="button"
             onClick={() => handleTabChange("doctor")}
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
               activeTab === "doctor"
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/30 ring-2 ring-blue-400/40"
-                : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                ? "bg-gradient-to-r from-[#00A896] via-[#028090] to-[#02C39A] text-white shadow-md shadow-teal-600/25 ring-2 ring-teal-400/30"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             }`}
           >
             <span>🩺</span>
             <span>Doctor Clinical Triage</span>
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-black ${
-                activeTab === "doctor" ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                activeTab === "doctor" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
               }`}
             >
               {appointments.length}
@@ -241,16 +241,16 @@ export default function HospitalPortalClient({
           <button
             type="button"
             onClick={() => handleTabChange("ambulance")}
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
               activeTab === "ambulance"
-                ? "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-lg shadow-rose-600/30 ring-2 ring-rose-400/40"
-                : "text-rose-300 hover:bg-rose-950/40 hover:text-rose-100"
+                ? "bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-600/25 ring-2 ring-rose-400/30"
+                : "text-rose-700 hover:bg-rose-50 hover:text-rose-900"
             }`}
           >
             <span>🚑</span>
             <span>Ambulance Fleet & GPS Console</span>
             {ambulanceAppointments.length > 0 && (
-              <span className="rounded-full bg-rose-500/30 px-2 py-0.5 text-[10px] font-black text-rose-200 border border-rose-400/30 animate-pulse">
+              <span className="rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-black text-rose-700 border border-rose-300 animate-pulse">
                 {ambulanceAppointments.length}
               </span>
             )}
@@ -260,16 +260,16 @@ export default function HospitalPortalClient({
           <button
             type="button"
             onClick={() => handleTabChange("gate")}
-            className={`inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
+            className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-xs sm:text-sm font-extrabold transition-all duration-200 ${
               activeTab === "gate"
-                ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-600/30 ring-2 ring-amber-400/40"
-                : "text-amber-300 hover:bg-amber-950/40 hover:text-amber-100"
+                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-400/30"
+                : "text-amber-800 hover:bg-amber-50 hover:text-amber-950"
             }`}
           >
             <span>🚪</span>
             <span>Gate Triage & ER Mobilization</span>
             {gateAppointments.length > 0 && (
-              <span className="rounded-full bg-amber-500/30 px-2 py-0.5 text-[10px] font-black text-amber-200 border border-amber-400/30 animate-pulse">
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-800 border border-amber-300 animate-pulse">
                 {gateAppointments.length}
               </span>
             )}
@@ -279,8 +279,8 @@ export default function HospitalPortalClient({
         {/* Global Trauma Alert Indicator & Persistent Siren Controls */}
         <div className="flex items-center gap-3 px-3">
           {redAlertTotal > 0 && (
-            <div className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/50 px-3 py-1.5 text-xs font-black text-red-200 animate-pulse">
-              <span className="h-2 w-2 rounded-full bg-red-400 animate-ping" />
+            <div className="inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3.5 py-1.5 text-xs font-black text-red-700 animate-pulse">
+              <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
               <span>{redAlertTotal} RED ALERT CASUALTIES</span>
             </div>
           )}
@@ -296,10 +296,10 @@ export default function HospitalPortalClient({
                   playEmergencySiren();
                 }
               }}
-              className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-black shadow-md transition-all active:scale-95 ${
+              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black shadow-md transition-all active:scale-95 ${
                 !sirenMuted
                   ? "bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-red-600/40"
-                  : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                  : "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200"
               }`}
               title={!sirenMuted ? "Click to Silence ER Siren" : "Click to Unmute ER Siren"}
             >
@@ -310,7 +310,7 @@ export default function HospitalPortalClient({
             <button
               type="button"
               onClick={playEmergencySiren}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-950/60 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-900/60 transition active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 shadow-xs"
               title="Test ER Hospital Siren (960 Hz <-> 770 Hz)"
             >
               <span className="animate-bounce">🔊</span>
@@ -336,39 +336,39 @@ export default function HospitalPortalClient({
         <div className="space-y-6 animate-fadeIn">
           {/* Ambulance Fleet Header Summary */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl border border-rose-500/30 bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-900 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-rose-400">
+            <div className="rounded-[2rem] border border-rose-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-rose-600">
                 Active Fleet Units
               </span>
-              <p className="mt-2 text-3xl font-black text-white">
+              <p className="mt-2 text-3xl font-black text-slate-900">
                 {ambulanceAppointments.length} Dispatched
               </p>
-              <p className="mt-1 text-xs text-slate-400">Autonomous Level 4 Medical Transport</p>
+              <p className="mt-1 text-xs text-slate-500">Autonomous Level 4 Medical Transport</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-cyan-400">
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-[#00A896]">
                 Average Target ETA
               </span>
-              <p className="mt-2 text-3xl font-black text-white">~04:30 min</p>
-              <p className="mt-1 text-xs text-slate-400">Autonomous Green-Corridor Clearance</p>
+              <p className="mt-2 text-3xl font-black text-slate-900">~04:30 min</p>
+              <p className="mt-1 text-xs text-slate-500">Autonomous Green-Corridor Clearance</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-600">
                 Telemetry & Guidance
               </span>
-              <p className="mt-2 text-3xl font-black text-white">GPS Lock Active</p>
-              <p className="mt-1 text-xs text-slate-400">108 Emergency Backup Synchronized</p>
+              <p className="mt-2 text-3xl font-black text-slate-900">GPS Lock Active</p>
+              <p className="mt-1 text-xs text-slate-500">108 Emergency Backup Synchronized</p>
             </div>
           </div>
 
           {/* Ambulance Dispatch Cards */}
           {ambulanceAppointments.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/50 p-12 text-center text-slate-400">
+            <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-slate-400 shadow-xs">
               <span className="text-4xl">🚑</span>
-              <h3 className="mt-3 text-base font-bold text-white">No Active Ambulance Dispatches</h3>
-              <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="mt-3 text-base font-bold text-slate-900">No Active Ambulance Dispatches</h3>
+              <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
                 All autonomous fleet ambulances are currently on standby in the hospital trauma bays.
               </p>
             </div>
@@ -385,21 +385,21 @@ export default function HospitalPortalClient({
                 return (
                   <div
                     key={apt.token}
-                    className="relative overflow-hidden rounded-3xl border-2 border-rose-500/60 bg-gradient-to-b from-slate-900 via-rose-950/20 to-slate-900 p-6 text-white shadow-2xl transition hover:border-rose-400"
+                    className="relative overflow-hidden rounded-[2rem] border-2 border-rose-200 bg-white p-6 text-slate-800 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition hover:border-rose-300"
                   >
-                    <div className="flex items-center justify-between border-b border-rose-500/30 pb-4">
+                    <div className="flex items-center justify-between border-b border-rose-100 pb-4">
                       <div>
-                        <span className="rounded-full bg-rose-500/20 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-300 border border-rose-400/30">
+                        <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-700 border border-rose-200">
                           {apt.token}
                         </span>
-                        <h4 className="mt-2 text-base font-black text-white">
+                        <h4 className="mt-2 text-base font-black text-slate-900">
                           {apt.patient_name}
                         </h4>
                       </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider ${
                           isPickedUp
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
                             : "bg-rose-500 text-white animate-pulse"
                         }`}
                       >
@@ -409,32 +409,32 @@ export default function HospitalPortalClient({
 
                     <div className="mt-4 space-y-3 text-xs">
                       <div className="flex items-start justify-between gap-4">
-                        <span className="text-slate-400">Target Location:</span>
-                        <span className="font-mono font-bold text-cyan-300 text-right">{loc}</span>
+                        <span className="text-slate-500">Target Location:</span>
+                        <span className="font-mono font-bold text-rose-700 text-right">{loc}</span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Assigned Fleet Vehicle:</span>
-                        <span className="font-bold text-white">{unit}</span>
+                        <span className="text-slate-500">Assigned Fleet Vehicle:</span>
+                        <span className="font-bold text-slate-900">{unit}</span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Trauma Response ETA:</span>
-                        <span className="font-mono font-bold text-rose-400">
+                        <span className="text-slate-500">Trauma Response ETA:</span>
+                        <span className="font-mono font-bold text-rose-600">
                           {apt.parsed_summary?.eta_mins || 5} mins
                         </span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Telemetry Logged:</span>
-                        <span className="text-slate-300">{apt.created_at || "Live Broadcast"}</span>
+                        <span className="text-slate-500">Telemetry Logged:</span>
+                        <span className="text-slate-600">{apt.created_at || "Live Broadcast"}</span>
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between gap-3 pt-4 border-t border-slate-800">
+                    <div className="mt-6 flex items-center justify-between gap-3 pt-4 border-t border-slate-100">
                       <a
                         href="tel:108"
-                        className="rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white"
+                        className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
                       >
                         📞 Call 108 Driver
                       </a>
@@ -444,12 +444,12 @@ export default function HospitalPortalClient({
                           type="button"
                           disabled={updatingToken === apt.token}
                           onClick={() => handleUpdateAppointmentStatus(apt.token, "In-Consultation")}
-                          className="rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2 text-xs font-extrabold text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition"
+                          className="rounded-full bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2.5 text-xs font-extrabold text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition"
                         >
                           {updatingToken === apt.token ? "Updating..." : "✓ Confirm Patient Picked Up"}
                         </button>
                       ) : (
-                        <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
                           ✓ Patient Secured & In Transit
                         </span>
                       )}
@@ -469,39 +469,39 @@ export default function HospitalPortalClient({
         <div className="space-y-6 animate-fadeIn">
           {/* Gate Operations Header Summary */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-900 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+            <div className="rounded-[2rem] border border-amber-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-amber-600">
                 Inbound Gate Casualties
               </span>
-              <p className="mt-2 text-3xl font-black text-white">
+              <p className="mt-2 text-3xl font-black text-slate-900">
                 {gateAppointments.length} Active Alerts
               </p>
-              <p className="mt-1 text-xs text-slate-400">Private Vehicles & Taxis Inbound</p>
+              <p className="mt-1 text-xs text-slate-500">Private Vehicles & Taxis Inbound</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-cyan-400">
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-[#00A896]">
                 Gate 1 Staging Point
               </span>
-              <p className="mt-2 text-3xl font-black text-white">Entrance Standby</p>
-              <p className="mt-1 text-xs text-slate-400">Triage Nurses & Stretchers Deployed</p>
+              <p className="mt-2 text-3xl font-black text-slate-900">Entrance Standby</p>
+              <p className="mt-1 text-xs text-slate-500">Triage Nurses & Stretchers Deployed</p>
             </div>
 
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl">
-              <span className="text-xs font-black uppercase tracking-wider text-emerald-400">
+            <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-600">
                 Resuscitation Bay 1
               </span>
-              <p className="mt-2 text-3xl font-black text-white">Level 1 Ready</p>
-              <p className="mt-1 text-xs text-slate-400">Crash Cart & Oxygen Active</p>
+              <p className="mt-2 text-3xl font-black text-slate-900">Level 1 Ready</p>
+              <p className="mt-1 text-xs text-slate-500">Crash Cart & Oxygen Active</p>
             </div>
           </div>
 
           {/* Gate Mobilization Cards */}
           {gateAppointments.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-800 bg-slate-900/50 p-12 text-center text-slate-400">
+            <div className="rounded-[2rem] border border-dashed border-slate-200 bg-white p-12 text-center text-slate-400 shadow-xs">
               <span className="text-4xl">🚪</span>
-              <h3 className="mt-3 text-base font-bold text-white">No Inbound Self-Arrival Alerts</h3>
-              <p className="mt-1 text-xs text-slate-400 max-w-md mx-auto">
+              <h3 className="mt-3 text-base font-bold text-slate-900">No Inbound Self-Arrival Alerts</h3>
+              <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
                 No private transport or incoming casualties currently flagged for Gate 1 mobilization.
               </p>
             </div>
@@ -527,22 +527,22 @@ export default function HospitalPortalClient({
                 return (
                   <div
                     key={apt.token}
-                    className="relative overflow-hidden rounded-3xl border-2 border-amber-500/60 bg-gradient-to-b from-slate-900 via-amber-950/20 to-slate-900 p-6 text-white shadow-2xl transition hover:border-amber-400"
+                    className="relative overflow-hidden rounded-[2rem] border-2 border-amber-200 bg-white p-6 text-slate-800 shadow-[0_10px_30px_rgba(0,0,0,0.04)] transition hover:border-amber-300"
                   >
-                    <div className="flex items-center justify-between border-b border-amber-500/30 pb-4">
+                    <div className="flex items-center justify-between border-b border-amber-100 pb-4">
                       <div>
-                        <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-300 border border-amber-400/30">
+                        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-800 border border-amber-200">
                           {apt.token}
                         </span>
-                        <h4 className="mt-2 text-base font-black text-white">
+                        <h4 className="mt-2 text-base font-black text-slate-900">
                           {apt.patient_name}
                         </h4>
                       </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider ${
                           isReceived
-                            ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                            : "bg-amber-500 text-slate-950 animate-pulse"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-300"
+                            : "bg-amber-500 text-slate-950 font-black animate-pulse"
                         }`}
                       >
                         {isReceived ? "Patient Received" : "Gate 1 Alert Active"}
@@ -550,74 +550,92 @@ export default function HospitalPortalClient({
                     </div>
 
                     <div className="mt-4 space-y-3 text-xs">
-                      <div className="rounded-2xl bg-black/50 p-3.5 border border-amber-500/30">
-                        <span className="text-[10px] uppercase font-bold text-slate-400">
+                      {/* Vehicle & ETA Notes */}
+                      <div className="rounded-2xl bg-amber-50/70 p-3.5 border border-amber-200/80">
+                        <span className="text-[10px] uppercase font-bold text-amber-800">
                           Incoming Vehicle & ETA Notes
                         </span>
-                        <p className="mt-1 font-mono font-bold text-amber-300 text-sm">
+                        <p className="mt-1 font-mono font-bold text-amber-950 text-sm">
                           {notes}
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Staging Location:</span>
-                        <span className="font-bold text-white">Main Hospital Entrance (Gate 1)</span>
+                      {/* Nurse Stephanie Cutout Card */}
+                      <div className="flex items-center gap-3 p-3 rounded-2xl bg-teal-50/70 border border-teal-100">
+                        <div className="relative">
+                          <img
+                            src="https://images.unsplash.com/photo-1594824813583-490351543b37?auto=format&fit=crop&q=80&w=400"
+                            alt="Nurse Stephanie"
+                            className="h-11 w-11 rounded-full object-cover border-2 border-emerald-400 shadow-sm"
+                            loading="lazy"
+                          />
+                          <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-900">Nurse Stephanie, RN</p>
+                          <span className="text-[11px] font-semibold text-teal-700">Gate 1 Rapid Response Triage Lead · Active Standby</span>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Arrival Notification:</span>
-                        <span className="text-slate-300">{apt.created_at || "Just Now"}</span>
+                        <span className="text-slate-500">Staging Location:</span>
+                        <span className="font-bold text-slate-900">Main Hospital Entrance (Gate 1)</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500">Arrival Notification:</span>
+                        <span className="text-slate-600">{apt.created_at || "Just Now"}</span>
                       </div>
                     </div>
 
                     {/* Interactive Checklist for Gate Staff */}
-                    <div className="mt-4 rounded-2xl bg-slate-950/70 p-4 border border-slate-800 text-xs">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                    <div className="mt-4 rounded-2xl bg-slate-50 p-4 border border-slate-200 text-xs">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-800">
                         Gate Ground Staff Checklist:
                       </span>
                       <div className="mt-2 space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer text-slate-700">
                           <input
                             type="checkbox"
                             checked={checklist.stretcher}
                             onChange={() => toggleGateChecklist(apt.token, "stretcher")}
-                            className="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                            className="rounded border-slate-300 bg-white text-amber-600 focus:ring-amber-500"
                           />
                           <span>Stretcher Deployed to Gate 1</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer text-slate-700">
                           <input
                             type="checkbox"
                             checked={checklist.nurse}
                             onChange={() => toggleGateChecklist(apt.token, "nurse")}
-                            className="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                            className="rounded border-slate-300 bg-white text-amber-600 focus:ring-amber-500"
                           />
                           <span>Triage Nurse on Standby at Entrance</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer text-slate-200">
+                        <label className="flex items-center gap-2 cursor-pointer text-slate-700">
                           <input
                             type="checkbox"
                             checked={checklist.bay}
                             onChange={() => toggleGateChecklist(apt.token, "bay")}
-                            className="rounded border-slate-700 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                            className="rounded border-slate-300 bg-white text-amber-600 focus:ring-amber-500"
                           />
                           <span>Trauma Resuscitation Bay 1 Prepared</span>
                         </label>
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+                    <div className="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                       {!isReceived ? (
                         <button
                           type="button"
                           disabled={updatingToken === apt.token}
                           onClick={() => handleUpdateAppointmentStatus(apt.token, "In-Consultation")}
-                          className="rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-5 py-2.5 text-xs font-black text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition"
+                          className="rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-6 py-2.5 text-xs font-black text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition"
                         >
                           {updatingToken === apt.token ? "Updating..." : "✓ Mark Patient Received at Gate"}
                         </button>
                       ) : (
-                        <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
                           ✓ Patient Admitted to ER Trauma Bay
                         </span>
                       )}

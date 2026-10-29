@@ -83,53 +83,46 @@ async function HospitalPortalData() {
 
 export default function HospitalPage() {
   return (
-    <div className="relative min-h-screen bg-slate-950 text-slate-100 selection:bg-blue-600 selection:text-white flex flex-col justify-between">
-      {/* Fixed Ambient Background Image with Overlay */}
-      <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat opacity-10 z-0 pointer-events-none mix-blend-overlay"
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1920&q=80')`,
-        }}
-      />
-
+    <div className="relative min-h-screen bg-[#F4F7F9] text-slate-800 selection:bg-[#00A896] selection:text-white flex flex-col justify-between">
       {/* Main Content Layer */}
       <div className="relative z-10 flex flex-col flex-1 justify-between">
-        <Navbar theme="dark" />
+        <Navbar theme="light" />
 
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex-1">
           {/* Hospital Header Banner */}
-          <section className="mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900/90 via-blue-950/70 to-slate-900/90 border border-slate-800/80 p-7 sm:p-10 text-white shadow-2xl backdrop-blur-md">
-            <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+          <section className="mb-8 relative overflow-hidden rounded-[2.2rem] bg-gradient-to-r from-[#00A896] via-[#028090] to-[#02C39A] p-7 sm:p-10 text-white shadow-xl shadow-teal-900/10">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute left-1/3 -bottom-20 h-56 w-56 rounded-full bg-teal-300/20 blur-3xl" />
 
             <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/20 px-3.5 py-1 text-xs font-bold text-blue-300 border border-blue-400/30 backdrop-blur-md">
-                  <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-bold text-teal-50 border border-white/20 backdrop-blur-md">
+                  <span className="flex h-2 w-2 rounded-full bg-amber-300 animate-pulse" />
                   <span>Hospital Operations & Clinical Command</span>
-                  <span className="rounded-full bg-blue-500/40 px-2 py-0.5 text-[10px] text-blue-100">
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] text-white">
                     Multi-Department Hub
                   </span>
                 </div>
                 <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl text-white">
                   Multi-Department Hospital Portal
                 </h1>
-                <p className="mt-2 max-w-2xl text-slate-300 text-xs sm:text-sm leading-relaxed">
+                <p className="mt-2 max-w-2xl text-teal-50/90 text-xs sm:text-sm leading-relaxed">
                   Unified command console for Doctor Clinical Triage, Autonomous Ambulance Fleet Telemetry, and Gate 1 Emergency Mobilization.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 backdrop-blur-md text-xs shadow-xs">
-                  <span className="text-slate-400">Hospital Staff Session</span>
-                  <p className="font-bold text-emerald-400 flex items-center gap-1.5 mt-0.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-md text-xs shadow-xs">
+                  <span className="text-teal-100">Hospital Staff Session</span>
+                  <p className="font-bold text-white flex items-center gap-1.5 mt-0.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-300" />
                     Authorized Clinician / Staff
                   </p>
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 backdrop-blur-md text-xs shadow-xs">
-                  <span className="text-slate-400">Integrated Engines</span>
-                  <p className="font-bold text-blue-400 flex items-center gap-1.5 mt-0.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-md text-xs shadow-xs">
+                  <span className="text-teal-100">Integrated Engines</span>
+                  <p className="font-bold text-white flex items-center gap-1.5 mt-0.5">
+                    <span className="h-2 w-2 rounded-full bg-cyan-300" />
                     Triage AI, Fleet GPS & Gate 1 Active
                   </p>
                 </div>
@@ -139,9 +132,9 @@ export default function HospitalPage() {
 
           <Suspense
             fallback={
-              <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-14 text-center text-slate-400 shadow-xl backdrop-blur-md">
-                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-                <p className="mt-4 text-xs font-bold tracking-wide text-slate-300 uppercase">
+              <div className="rounded-[2rem] border border-slate-100 bg-white p-14 text-center text-slate-400 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+                <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#00A896] border-t-transparent" />
+                <p className="mt-4 text-xs font-bold tracking-wide text-slate-500 uppercase">
                   Synchronizing Hospital Multi-Department Queue...
                 </p>
               </div>
@@ -151,7 +144,7 @@ export default function HospitalPage() {
           </Suspense>
         </main>
 
-        <footer className="border-t border-slate-800/80 bg-slate-950/80 py-6 text-center text-xs text-slate-500">
+        <footer className="border-t border-slate-100 bg-white py-6 text-center text-xs text-slate-500">
           MediBridge AI · HIPAA & Clinical Data Governance Protected Environment
         </footer>
       </div>

@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import EmergencyModal from "@/components/EmergencyModal";
 import { useLanguage } from "@/context/LanguageContext";
 
 type AppointmentRecord = {
@@ -40,6 +41,8 @@ function PatientDashboardContent() {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
+  const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
+  const [docVaultTab, setDocVaultTab] = useState<"rx" | "report">("rx");
 
   useEffect(() => {
     const savedToken =
@@ -112,115 +115,256 @@ function PatientDashboardContent() {
   const currentStatus = appointment?.status || "Waiting";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/20 to-slate-50 text-slate-900 flex flex-col justify-between">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col justify-between selection:bg-[#00A896] selection:text-white">
       <Navbar />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex-1">
-        {/* Welcome Header */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 p-7 sm:p-10 text-white shadow-xl shadow-blue-900/15">
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-400/20 blur-3xl" />
+        {/* ======================================================== */}
+        {/* REPASSE CURVED SEA-TEAL HERO CANVAS                     */}
+        {/* ======================================================== */}
+        <section className="relative overflow-hidden rounded-[2.2rem] bg-gradient-to-r from-[#00A896] via-[#028090] to-[#02C39A] p-7 sm:p-10 lg:p-12 text-white shadow-xl shadow-teal-900/10">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+          <div className="pointer-events-none absolute left-1/3 -bottom-24 h-64 w-64 rounded-full bg-teal-300/20 blur-3xl" />
 
-          <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold text-blue-200 backdrop-blur-md">
-                <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                {t("livePatientCarePortal")}
+          <div className="relative z-10 grid gap-8 lg:grid-cols-12 lg:items-center">
+            {/* Left Column: Intake details & actions */}
+            <div className="lg:col-span-7">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-bold text-teal-50 backdrop-blur-md border border-white/20">
+                <span className="flex h-2 w-2 rounded-full bg-amber-300 animate-pulse" />
+                <span>✨ Intelligent Clinical Intake & Fast-Track Triage</span>
               </div>
-              <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
-                {t("dashboardTitle")}
+              <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl text-white leading-tight">
+                Effortless clinical care, <span className="text-amber-300">never wait again.</span>
               </h1>
-              <p className="mt-2 max-w-xl text-blue-100 text-sm sm:text-base leading-relaxed">
+              <p className="mt-3 max-w-xl text-teal-50/90 text-sm sm:text-base leading-relaxed">
                 {t("dashboardSubtitle")}
               </p>
+
+              {/* Action Pills */}
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <Link
+                  href="/appointment"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-xs sm:text-sm font-extrabold text-[#028090] shadow-md transition-all duration-300 hover:scale-105 hover:bg-teal-50 hover:shadow-lg active:scale-95"
+                >
+                  <span>🗓️</span>
+                  <span>{t("bookNewVisit")}</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setEmergencyModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-rose-500 hover:bg-rose-600 px-6 py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-lg shadow-rose-500/30 transition-all duration-300 hover:scale-105 active:scale-95 animate-pulse"
+                >
+                  <span className="h-2 w-2 rounded-full bg-white animate-ping" />
+                  <span>🚨 {t("navbar_emergency_sos")}</span>
+                </button>
+              </div>
+
+              {/* Metric Strip */}
+              <div className="mt-8 grid grid-cols-3 gap-3 border-t border-white/20 pt-6">
+                <div>
+                  <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
+                    SOS Dispatch
+                  </span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">~3.2m</p>
+                  <span className="text-[10px] text-teal-100/80">Autonomous Response</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
+                    OCR Accuracy
+                  </span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">99.4%</p>
+                  <span className="text-[10px] text-teal-100/80">Prescription Vision</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
+                    Paperwork Delay
+                  </span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">0 Mins</p>
+                  <span className="text-[10px] text-teal-100/80">Instant AI Ingestion</span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            {/* Right Column: Realistic Doctor Photography with Floating Badges */}
+            <div className="lg:col-span-5 flex justify-center lg:justify-end">
+              <div className="relative w-full max-w-sm">
+                <div className="relative h-80 sm:h-96 w-full overflow-hidden rounded-[2rem] border-2 border-white/20 shadow-2xl bg-teal-900/30">
+                  <img
+                    src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=800"
+                    alt="Attending Physician"
+                    className="h-full w-full object-cover object-top"
+                    loading="lazy"
+                  />
+                  {/* Subtle Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-teal-950/60 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Floating Glass Badge 1 (Top Left) */}
+                  <div className="absolute top-4 left-4 backdrop-blur-md bg-white/90 border border-white/40 shadow-lg text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-full flex items-center gap-1.5">
+                    <span>✨</span>
+                    <span>AI Clinical Review: Verified in 12s</span>
+                  </div>
+
+                  {/* Floating Glass Badge 2 (Bottom Right) */}
+                  <div className="absolute bottom-4 right-4 backdrop-blur-md bg-white/90 border border-white/40 shadow-lg text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-full flex items-center gap-1.5">
+                    <span>👨‍⚕️</span>
+                    <span>On-Duty Triage: Dr. Sharma, MD</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ======================================================== */}
+        {/* CARD 1: TRIAGE VITALS & WAITING STATUS                   */}
+        {/* ======================================================== */}
+        <section className="mt-8 grid gap-6 md:grid-cols-3">
+          <div className="rounded-[2rem] bg-white border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-[#00A896]">
+                  Real-Time Vitals
+                </span>
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+              <h3 className="mt-4 text-lg font-black text-slate-900">
+                Queue & Vitals Status
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {appointment ? `${appointment.department} Consultation Wing` : "Clinical Queue Telemetry"}
+              </p>
+
+              <div className="mt-4 rounded-2xl bg-teal-50/60 border border-teal-100 p-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⏱️</span>
+                  <div>
+                    <p className="text-sm font-extrabold text-slate-900">
+                      {currentStatus === "Completed"
+                        ? "Visit Completed"
+                        : currentStatus === "In-Consultation"
+                        ? "In Consultation Now"
+                        : "2 Patients Ahead (~10 min ETA)"}
+                    </p>
+                    <p className="text-[11px] text-teal-800 font-medium">
+                      Priority triage automated by Grok Clinical Engine
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2 text-xs">
+                <div className="flex items-center justify-between py-1.5 border-b border-slate-50">
+                  <span className="text-slate-500">Fleet Response:</span>
+                  <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                    Smart AV-Ambulance MED-09 (Standby)
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-slate-500">ER Mobilization:</span>
+                  <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                    Gateway Mobilization (Gate 1 Ready)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-100">
               <Link
                 href="/appointment"
-                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-blue-900 shadow-md transition-all duration-300 hover:scale-105 hover:bg-blue-50 hover:shadow-lg active:scale-95"
+                className="block text-center rounded-full bg-slate-50 hover:bg-teal-50 py-2.5 text-xs font-bold text-[#028090] transition"
               >
-                <span>{t("bookNewVisit")}</span>
+                Schedule Follow-up Visit →
               </Link>
+            </div>
+          </div>
+
+          {/* Quick Card 2: Document Vault Overview */}
+          <div className="rounded-[2rem] bg-white border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
+                  Document Intelligence
+                </span>
+                <span className="text-sm">📄</span>
+              </div>
+              <h3 className="mt-4 text-lg font-black text-slate-900">
+                Clinical Record Vault
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Multimodal Sarvam OCR & Grok Vision digitization
+              </p>
+
+              <div className="mt-4 space-y-2.5 text-xs">
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>💊</span>
+                    <span className="font-bold text-slate-700">Prescription Ingestion</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-600">
+                    {rxUrl ? "Attached & Verified" : "Ready for Upload"}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>🩻</span>
+                    <span className="font-bold text-slate-700">Radiology / Lab Scan</span>
+                  </div>
+                  <span className="text-[11px] font-bold text-emerald-600">
+                    {reportUrl ? "Attached & Verified" : "Ready for Upload"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-100">
               <Link
-                href={
-                  activeToken
-                    ? `/patient-details?token=${encodeURIComponent(activeToken)}`
-                    : "/patient-details"
-                }
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-white/20 active:scale-95"
+                href={activeToken ? `/patient-details?token=${encodeURIComponent(activeToken)}` : "/patient-details"}
+                className="block text-center rounded-full bg-slate-50 hover:bg-indigo-50 py-2.5 text-xs font-bold text-indigo-700 transition"
               >
-                <span>{t("uploadRecords")}</span>
+                Manage Uploaded Documents →
+              </Link>
+            </div>
+          </div>
+
+          {/* Quick Card 3: Patient Guidelines & Arrival Policy */}
+          <div className="rounded-[2rem] bg-white border border-slate-100 p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                  Hospital Protocol
+                </span>
+                <span className="text-sm">🏥</span>
+              </div>
+              <h3 className="mt-4 text-lg font-black text-slate-900">
+                Zero-Delay Clinical Protocol
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Check-in, consultation sequence, and triage guidance
+              </p>
+
+              <div className="mt-4 rounded-2xl bg-amber-50/60 border border-amber-100 p-3.5 text-xs text-amber-900 leading-relaxed">
+                Please arrive 5-10 minutes before your scheduled slot. Present your digital token at the triage desk for express check-in.
+              </div>
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <Link
+                href="/appointment"
+                className="block text-center rounded-full bg-slate-50 hover:bg-amber-50 py-2.5 text-xs font-bold text-amber-800 transition"
+              >
+                View Department Guide →
               </Link>
             </div>
           </div>
         </section>
 
-        {/* Quick Actions Interactive Grid */}
-        <section className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
-            href="/appointment"
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/10"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-blue-600 transition-transform duration-300 group-hover:scale-110">
-              🗓️
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-blue-600">
-              {t("scheduleConsultation")}
-            </h2>
-            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              {t("scheduleDesc")}
-            </p>
-            <div className="mt-4 flex items-center text-xs font-bold text-blue-600 group-hover:underline">
-              {t("bookAppointmentAction")}
-            </div>
-          </Link>
-
-          <Link
-            href={
-              activeToken
-                ? `/patient-details?token=${encodeURIComponent(activeToken)}`
-                : "/patient-details"
-            }
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300 hover:shadow-xl hover:shadow-indigo-500/10"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-2xl text-indigo-600 transition-transform duration-300 group-hover:scale-110">
-              📄
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
-              {t("uploadMoreRecords")}
-            </h2>
-            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              {t("uploadMoreDesc")}
-            </p>
-            <div className="mt-4 flex items-center text-xs font-bold text-indigo-600 group-hover:underline">
-              {t("openDocUpload")}
-            </div>
-          </Link>
-
-          <Link
-            href="/appointment"
-            className="group relative overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl hover:shadow-cyan-500/10 sm:col-span-2 lg:col-span-1"
-          >
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-2xl text-cyan-600 transition-transform duration-300 group-hover:scale-110">
-              🏥
-            </div>
-            <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-cyan-600">
-              {t("clinicGuidelines")}
-            </h2>
-            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              {t("clinicGuidelinesDesc")}
-            </p>
-            <div className="mt-4 flex items-center text-xs font-bold text-cyan-600 group-hover:underline">
-              {t("clinicArrivalPolicy")}
-            </div>
-          </Link>
-        </section>
-
-        {/* Live Token Tracker & Active Consultation Elevation */}
-        <section className="mt-10 rounded-3xl border border-slate-200/90 bg-white p-6 shadow-lg shadow-slate-200/40 sm:p-8">
+        {/* ======================================================== */}
+        {/* LIVE TOKEN TRACKER & ACTIVE CONSULTATION ELEVATION      */}
+        {/* ======================================================== */}
+        <section className="mt-10 rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] sm:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
             <div>
-              <span className="text-xs font-black uppercase tracking-wider text-blue-600">
+              <span className="text-xs font-black uppercase tracking-wider text-[#00A896]">
                 {t("realTimeSynchronized")}
               </span>
               <h2 className="text-2xl font-black text-slate-900">{t("tokenTrackerTitle")}</h2>
@@ -235,12 +379,12 @@ function PatientDashboardContent() {
                 placeholder={t("tokenInputPlaceholder")}
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
-                className="w-48 sm:w-60 rounded-xl border border-slate-300 bg-slate-50/50 px-3.5 py-2.5 text-xs sm:text-sm font-mono font-bold text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                className="w-48 sm:w-60 rounded-full border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-xs sm:text-sm font-mono font-bold text-slate-900 outline-none transition focus:border-[#00A896] focus:bg-white focus:ring-2 focus:ring-teal-100"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                className="rounded-full bg-gradient-to-r from-[#00A896] to-[#028090] px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:scale-105 active:scale-95 disabled:opacity-50"
               >
                 {loading ? t("tokenChecking") : t("trackTokenBtn")}
               </button>
@@ -253,11 +397,11 @@ function PatientDashboardContent() {
             </div>
           )}
 
-          {/* Active Patient Appointment View: STRICT SEPARATION (NO INTERNAL DOCTOR SUMMARIES) */}
+          {/* Active Patient Appointment View */}
           {appointment ? (
             <div className="mt-8 grid gap-8 lg:grid-cols-12">
-              {/* 1. DIGITAL QUEUE CARD */}
-              <div className="lg:col-span-5 flex flex-col justify-between relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 p-6 sm:p-7 text-white shadow-xl shadow-blue-600/20">
+              {/* CARD 2: DIGITAL INTAKE TOKEN PASS (BOARDING PASS FORMAT) */}
+              <div className="lg:col-span-5 flex flex-col justify-between relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#00A896] via-[#028090] to-[#02C39A] p-6 sm:p-7 text-white shadow-xl shadow-teal-900/15">
                 <div className="pointer-events-none absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
 
                 <div>
@@ -267,50 +411,98 @@ function PatientDashboardContent() {
                     </span>
                     <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-xs">
                       <span className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75"></span>
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
                       </span>
                       <span>{t("liveStatusSync")}</span>
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <p className="font-mono text-4xl sm:text-5xl font-black tracking-wider text-white">
+                  {/* Token Number & Boarding Pass Styling */}
+                  <div className="mt-6 rounded-2xl bg-white/10 p-4 backdrop-blur-xs border border-white/20">
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-teal-100">
+                      CLINICAL INTAKE PASS
+                    </span>
+                    <p className="font-mono text-3xl sm:text-4xl font-black tracking-wider text-white mt-1">
                       {appointment.token}
                     </p>
-                    <div className="mt-2.5 flex items-center gap-2">
+                    <div className="mt-2.5 flex items-center justify-between">
                       <button
                         onClick={() => handleCopy(appointment.token)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-white/30"
+                        className="inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-bold text-white transition hover:bg-white/30"
                       >
                         {copied ? t("copiedToClipboard") : t("copyTokenBtn")}
                       </button>
+                      {/* Simulated Barcode */}
+                      <div className="flex items-center gap-0.5 opacity-60">
+                        <span className="w-0.5 h-6 bg-white" />
+                        <span className="w-1 h-6 bg-white" />
+                        <span className="w-0.5 h-6 bg-white" />
+                        <span className="w-1.5 h-6 bg-white" />
+                        <span className="w-0.5 h-6 bg-white" />
+                        <span className="w-1 h-6 bg-white" />
+                        <span className="w-0.5 h-6 bg-white" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3-Stage Progress Stepper */}
+                  <div className="mt-6 rounded-2xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/15">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <div className="flex flex-col items-center">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-400 text-teal-950 font-black text-[10px]">
+                          ✓
+                        </span>
+                        <span className="mt-1 text-white">(1) Checked-In</span>
+                      </div>
+                      <span className="h-0.5 flex-1 bg-white/30 mx-2 mb-4" />
+                      <div className="flex flex-col items-center">
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-full font-black text-[10px] ${
+                          currentStatus === "In-Consultation"
+                            ? "bg-amber-300 text-slate-900 animate-pulse"
+                            : "bg-white/30 text-white"
+                        }`}>
+                          2
+                        </span>
+                        <span className="mt-1 text-white">(2) Triage Active</span>
+                      </div>
+                      <span className="h-0.5 flex-1 bg-white/30 mx-2 mb-4" />
+                      <div className="flex flex-col items-center">
+                        <span className={`flex h-5 w-5 items-center justify-center rounded-full font-black text-[10px] ${
+                          currentStatus === "Completed"
+                            ? "bg-emerald-400 text-teal-950"
+                            : "bg-white/20 text-white/60"
+                        }`}>
+                          3
+                        </span>
+                        <span className="mt-1 text-white/80">(3) Visited</span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Consultation Patient Details */}
-                  <div className="mt-7 space-y-2.5 border-t border-white/20 pt-5 text-xs sm:text-sm">
+                  <div className="mt-6 space-y-2.5 border-t border-white/20 pt-5 text-xs sm:text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-100">{t("patientNameLabel")}</span>
+                      <span className="text-teal-100">{t("patientNameLabel")}</span>
                       <span className="font-bold">{appointment.patient_name}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">{t("specialtyDoctorLabel")}</span>
+                      <span className="text-teal-100">{t("specialtyDoctorLabel")}</span>
                       <span className="font-bold truncate max-w-[200px]">{appointment.department}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">{t("scheduledTimeLabel")}</span>
+                      <span className="text-teal-100">{t("scheduledTimeLabel")}</span>
                       <span className="font-bold">{appointment.appointment_date}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-blue-100">{t("queueStatusLabel")}</span>
+                      <span className="text-teal-100">{t("queueStatusLabel")}</span>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                           currentStatus === "Completed"
-                            ? "bg-emerald-400 text-emerald-950"
+                            ? "bg-emerald-300 text-emerald-950"
                             : currentStatus === "In-Consultation"
-                            ? "bg-cyan-300 text-cyan-950 animate-pulse"
-                            : "bg-amber-300 text-amber-950"
+                            ? "bg-amber-300 text-amber-950 animate-pulse"
+                            : "bg-teal-200 text-teal-950"
                         }`}
                       >
                         {currentStatus === "Completed"
@@ -321,43 +513,22 @@ function PatientDashboardContent() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Estimated Queue Position / Wait Time Notice */}
-                  <div className="mt-5 rounded-2xl bg-white/10 p-3.5 backdrop-blur-xs border border-white/15 text-xs">
-                    <div className="flex items-center gap-2 font-bold text-white">
-                      <span className="text-base">⏱️</span>
-                      <span>
-                        {currentStatus === "Completed"
-                          ? t("waitCompleted")
-                          : currentStatus === "In-Consultation"
-                          ? t("waitInConsultation")
-                          : t("waitEstimated")}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-blue-100">
-                      {currentStatus === "Completed"
-                        ? t("waitCompletedDesc")
-                        : currentStatus === "In-Consultation"
-                        ? t("waitInConsultationDesc")
-                        : t("waitEstimatedDesc")}
-                    </p>
-                  </div>
                 </div>
 
                 <div className="mt-6">
                   <Link
                     href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                    className="block w-full rounded-2xl bg-white py-3 text-center text-xs sm:text-sm font-extrabold text-blue-900 shadow-md transition-all hover:bg-blue-50 active:scale-98"
+                    className="block w-full rounded-full bg-white py-3 text-center text-xs sm:text-sm font-extrabold text-[#028090] shadow-md transition-all hover:bg-teal-50 active:scale-98"
                   >
                     {t("updateIntakeBtn")}
                   </Link>
                 </div>
               </div>
 
-              {/* 2. ATTACHED DOCUMENTS CONFIRMATION (PATIENT-ONLY: ZERO CLINICAL NOTES) */}
-              <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs">
+              {/* CARD 3: MEDICAL DOCUMENT VAULT (TABBED PORCELAIN CARD) */}
+              <div className="lg:col-span-7 flex flex-col justify-between rounded-[2rem] border border-slate-100 bg-white p-6 sm:p-7 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
                 <div>
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4 gap-3">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
                         {t("attachedDocuments")}
@@ -366,121 +537,138 @@ function PatientDashboardContent() {
                         {t("vaultSubtitle")}
                       </p>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                      {t("patientVaultBadge")}
-                    </span>
+                    <div className="flex items-center gap-1.5 rounded-full bg-slate-100 p-1 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setDocVaultTab("rx")}
+                        className={`rounded-full px-3 py-1 transition ${
+                          docVaultTab === "rx" ? "bg-white text-teal-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Prescriptions ({rxUrl ? 1 : 0})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDocVaultTab("report")}
+                        className={`rounded-full px-3 py-1 transition ${
+                          docVaultTab === "report" ? "bg-white text-teal-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        Reports & Scans ({reportUrl ? 1 : 0})
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-5 space-y-4">
-                    {/* Attached Prescription Confirmation */}
-                    {rxUrl ? (
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100 text-xl text-blue-700 shadow-inner">
-                            📄
+                    {docVaultTab === "rx" ? (
+                      rxUrl ? (
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-teal-100 bg-teal-50/50 p-4 transition-all hover:bg-teal-50">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-xl text-teal-700 shadow-inner">
+                              📄
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-900">
+                                {t("attachedPrescription")}
+                              </p>
+                              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                {t("encryptedVerified")} · Digitized by Sarvam
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">
-                              {t("attachedPrescription")}
-                            </p>
-                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              {t("encryptedVerified")}
-                            </span>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setPreviewDocModal(rxUrl)}
-                            className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
-                          >
-                            {t("preview")}
-                          </button>
-                          <a
-                            href={rxUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                          >
-                            {t("download")}
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setPreviewDocModal(rxUrl)}
+                              className="rounded-full bg-[#00A896] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#028090]"
+                            >
+                              [ View Original ]
+                            </button>
+                            <a
+                              href={rxUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              [ Download PDF ]
+                            </a>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3">
+                          <span>{t("noRxAttached")}</span>
+                          <Link
+                            href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
+                            className="rounded-full bg-teal-50 px-4 py-2 font-bold text-[#028090] hover:bg-teal-100 transition"
+                          >
+                            + {t("attachRxBtn")}
+                          </Link>
+                        </div>
+                      )
                     ) : (
-                      <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
-                        <span>{t("noRxAttached")}</span>
-                        <Link
-                          href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                          className="font-bold text-blue-600 hover:underline"
-                        >
-                          {t("attachRxBtn")}
-                        </Link>
-                      </div>
-                    )}
-
-                    {/* Attached Diagnostic Report Confirmation */}
-                    {reportUrl ? (
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-slate-200/80 bg-slate-50 p-4 transition-all hover:bg-slate-100/60">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-xl text-indigo-700 shadow-inner">
-                            🩻
+                      reportUrl ? (
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-teal-100 bg-teal-50/50 p-4 transition-all hover:bg-teal-50">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-100 text-xl text-teal-700 shadow-inner">
+                              🩻
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-900">
+                                {t("attachedReport")}
+                              </p>
+                              <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                {t("encryptedVerified")} · Grok Vision Verified
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-900">
-                              {t("attachedReport")}
-                            </p>
-                            <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
-                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              {t("encryptedVerified")}
-                            </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setPreviewDocModal(reportUrl)}
+                              className="rounded-full bg-[#00A896] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#028090]"
+                            >
+                              [ View Original ]
+                            </button>
+                            <a
+                              href={reportUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                            >
+                              [ Download PDF ]
+                            </a>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setPreviewDocModal(reportUrl)}
-                            className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3">
+                          <span>{t("noReportAttached")}</span>
+                          <Link
+                            href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
+                            className="rounded-full bg-teal-50 px-4 py-2 font-bold text-[#028090] hover:bg-teal-100 transition"
                           >
-                            {t("preview")}
-                          </button>
-                          <a
-                            href={reportUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
-                          >
-                            {t("download")}
-                          </a>
+                            + {t("attachReportBtn")}
+                          </Link>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
-                        <span>{t("noReportAttached")}</span>
-                        <Link
-                          href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
-                          className="font-bold text-blue-600 hover:underline"
-                        >
-                          {t("attachReportBtn")}
-                        </Link>
-                      </div>
+                      )
                     )}
                   </div>
                 </div>
 
-                <div className="mt-8 rounded-2xl bg-slate-50 p-4 border border-slate-100 text-xs text-slate-600">
+                <div className="mt-8 rounded-2xl bg-teal-50/50 p-4 border border-teal-100/60 text-xs text-slate-600">
                   <div className="flex items-center gap-2 font-bold text-slate-900">
                     <span>🏥</span>
                     <span>{t("clinicPatientNotice")}</span>
                   </div>
-                  <p className="mt-1 leading-relaxed text-[11px] text-slate-500">
+                  <p className="mt-1 leading-relaxed text-[11px] text-slate-600">
                     {t("clinicNotice")}
                   </p>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
+            <div className="mt-8 rounded-[2rem] border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
               <span className="text-4xl">🎟️</span>
               <h3 className="mt-3 text-base font-bold text-slate-900">{t("noActiveTokenTitle")}</h3>
               <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
@@ -489,7 +677,7 @@ function PatientDashboardContent() {
               <div className="mt-5">
                 <Link
                   href="/appointment"
-                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
+                  className="rounded-full bg-gradient-to-r from-[#00A896] to-[#028090] px-6 py-2.5 text-xs font-bold text-white shadow-sm transition hover:scale-105 active:scale-95"
                 >
                   {t("bookNewAppointmentNow")}
                 </Link>
@@ -498,15 +686,70 @@ function PatientDashboardContent() {
           )}
         </section>
 
+        {/* ======================================================== */}
+        {/* BOTTOM SECTION: 3 SIMPLE STEPS TO CLINICAL INTAKE        */}
+        {/* ======================================================== */}
+        <section className="mt-10 rounded-[2rem] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+          <div className="text-center max-w-2xl mx-auto">
+            <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-extrabold text-[#00A896]">
+              Intelligent Workflow
+            </span>
+            <h3 className="mt-2 text-xl sm:text-2xl font-black text-slate-900">
+              3 Simple Steps to Clinical Intake
+            </h3>
+            <p className="mt-1 text-xs sm:text-sm text-slate-500">
+              How MediBridge AI accelerates diagnosis and eliminates administrative wait time
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-3">
+            <div className="rounded-2xl border border-slate-100 bg-[#F8FAFC] p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-black text-sm">
+                1
+              </div>
+              <h4 className="mt-3 text-sm font-bold text-slate-900">
+                Voice & Document Intake
+              </h4>
+              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                Dictate your symptoms in English, Hindi, or Telugu, or snap a picture of your past prescription.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-[#F8FAFC] p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-black text-sm">
+                2
+              </div>
+              <h4 className="mt-3 text-sm font-bold text-slate-900">
+                Autonomous OCR & Synthesis
+              </h4>
+              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                Sarvam OCR and Grok AI extract clinical biomarkers, medications, and differential diagnoses in seconds.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-[#F8FAFC] p-5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-100 text-teal-800 font-black text-sm">
+                3
+              </div>
+              <h4 className="mt-3 text-sm font-bold text-slate-900">
+                Direct Express Consultation
+              </h4>
+              <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+                Walk into your consultation room with your doctor already briefed on your full medical profile.
+              </p>
+            </div>
+          </div>
+        </section>
+
         {/* Modal Quick Preview for Attached Document */}
         {previewDocModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-100 p-4">
                 <h3 className="text-sm font-bold text-slate-900">{t("docVaultViewer")}</h3>
                 <button
                   onClick={() => setPreviewDocModal(null)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
                   ✕
                 </button>
@@ -523,7 +766,13 @@ function PatientDashboardContent() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
+      {/* Emergency Modal Instance for Hero SOS */}
+      <EmergencyModal
+        isOpen={emergencyModalOpen}
+        onClose={() => setEmergencyModalOpen(false)}
+      />
+
+      <footer className="border-t border-slate-100 bg-white py-6 text-center text-xs text-slate-500">
         MediBridge AI · Confidential Patient Health Information Portal
       </footer>
     </div>

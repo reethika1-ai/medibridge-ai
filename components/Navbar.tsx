@@ -41,8 +41,8 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
       <header
         className={`sticky top-0 z-50 transition-all ${
           isDark
-            ? "border-b border-slate-800/90 bg-slate-950/80 backdrop-blur-md text-slate-100"
-            : "border-b border-slate-100/90 bg-white/80 backdrop-blur-md text-slate-900"
+            ? "border-b border-slate-100 bg-white/90 backdrop-blur-md text-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
+            : "border-b border-slate-100 bg-white/90 backdrop-blur-md text-slate-800 shadow-[0_4px_20px_rgba(0,0,0,0.03)]"
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
@@ -50,7 +50,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
             href={isHospitalRoute ? "/hospital" : "/"}
             className="group flex items-center gap-3"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-500/25 transition-transform duration-300 group-hover:scale-105">
+            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#00A896] via-[#028090] to-[#02C39A] text-white shadow-md shadow-teal-500/25 transition-transform duration-300 group-hover:scale-105">
               <svg
                 className="h-5 w-5"
                 fill="none"
@@ -65,28 +65,20 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
                 />
               </svg>
               <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500"></span>
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-300 opacity-75"></span>
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-teal-400"></span>
               </span>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span
-                  className={`text-xl font-extrabold tracking-tight ${
-                    isDark ? "text-white" : "text-slate-900"
-                  }`}
-                >
+                <span className="text-xl font-extrabold tracking-tight text-slate-900">
                   MediBridge
                 </span>
-                <span className="rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 px-1.5 py-0.5 text-xs font-black tracking-wider text-white shadow-xs">
+                <span className="rounded-full bg-gradient-to-r from-[#00A896] to-[#028090] px-2 py-0.5 text-[11px] font-black tracking-wider text-white shadow-xs">
                   {isHospitalRoute ? "HOSPITAL OS" : "AI"}
                 </span>
               </div>
-              <span
-                className={`hidden text-[11px] font-medium tracking-wide sm:block ${
-                  isDark ? "text-slate-400" : "text-slate-500"
-                }`}
-              >
+              <span className="hidden text-[11px] font-medium tracking-wide sm:block text-slate-500">
                 {isHospitalRoute
                   ? "Multi-Department Emergency & Clinical Environment"
                   : t("navbar_brand_subtitle")}
@@ -97,35 +89,29 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
           {isHospitalRoute ? (
             /* HOSPITAL & CLINICIAN RESTRICTED NAVIGATION */
             <nav className="flex items-center gap-2.5 sm:gap-3">
-              <div className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-emerald-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="hidden sm:inline-flex items-center gap-2 rounded-full border border-teal-200/80 bg-teal-50/80 px-3 py-1.5 text-xs font-bold text-teal-800">
+                <span className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
                 <span>Hospital Staff Active</span>
               </div>
 
               {/* Language Switcher */}
-              <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900/90 px-2 py-1 text-xs text-slate-300">
+              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-xs">
                 <span className="text-sm">🌐</span>
                 <select
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as any)}
-                  className="bg-transparent font-bold text-slate-200 outline-none cursor-pointer"
+                  className="bg-transparent font-bold text-slate-800 outline-none cursor-pointer"
                   title="Select Language"
                 >
-                  <option value="en" className="bg-slate-900 text-white">
-                    EN
-                  </option>
-                  <option value="hi" className="bg-slate-900 text-white">
-                    हिन्दी
-                  </option>
-                  <option value="te" className="bg-slate-900 text-white">
-                    తెలుగు
-                  </option>
+                  <option value="en">EN</option>
+                  <option value="hi">हिन्दी</option>
+                  <option value="te">తెలుగు</option>
                 </select>
               </div>
 
               <button
                 onClick={handleDoctorSignOut}
-                className="rounded-xl border border-slate-700 bg-slate-800/90 px-3.5 py-2 text-xs font-bold text-slate-200 shadow-xs transition hover:bg-slate-700 hover:text-white active:scale-95"
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:text-slate-900 active:scale-95"
               >
                 Sign Out
               </button>
@@ -137,7 +123,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
               <button
                 type="button"
                 onClick={handleTriggerEmergency}
-                className="relative inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 px-3 py-2 text-xs font-black text-white shadow-md shadow-red-500/30 transition-all duration-200 hover:scale-105 active:scale-95 animate-pulse"
+                className="relative inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-700 px-3.5 py-2 text-xs font-black text-white shadow-md shadow-red-500/30 transition-all duration-200 hover:scale-105 active:scale-95 animate-pulse"
                 title="Emergency Response Triage"
               >
                 <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
@@ -145,7 +131,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
               </button>
 
               {/* Language Switcher */}
-              <div className="flex items-center gap-1 rounded-xl border border-slate-200/90 bg-white/90 px-2.5 py-1.5 text-xs text-slate-700 shadow-xs">
+              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 shadow-xs">
                 <span className="text-sm">🌐</span>
                 <select
                   value={language}
@@ -161,17 +147,17 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
 
               <Link
                 href="/patient/dashboard"
-                className="hidden lg:inline-flex rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100/80 hover:text-blue-600 transition-all duration-200"
+                className="hidden lg:inline-flex rounded-full px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-teal-50 hover:text-[#028090] transition-all duration-200"
               >
                 {t("navbar_patient_dashboard")}
               </Link>
 
               <Link
                 href="/hospital"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-700"
+                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/90 bg-white px-3.5 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-teal-300 hover:bg-teal-50/60 hover:text-[#028090]"
               >
                 <svg
-                  className="h-3.5 w-3.5 text-blue-500"
+                  className="h-3.5 w-3.5 text-[#00A896]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -188,7 +174,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
 
               <Link
                 href="/appointment"
-                className="relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-3.5 py-2 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/35 active:scale-95"
+                className="relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-[#00A896] via-[#028090] to-[#02C39A] px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-md shadow-teal-600/25 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-teal-600/35 active:scale-95"
               >
                 <span>{t("navbar_book_appointment")}</span>
               </Link>

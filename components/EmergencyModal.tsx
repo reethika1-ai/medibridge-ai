@@ -195,26 +195,26 @@ export default function EmergencyModal({
   ).padStart(2, "0")} min`;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-rose-500/80 bg-gradient-to-b from-slate-950 via-rose-950/30 to-slate-950 p-6 sm:p-8 text-white shadow-2xl shadow-rose-950/50">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-fadeIn">
+      <div className="relative w-full max-w-lg overflow-hidden rounded-[2.2rem] border-2 border-rose-200 bg-white p-6 sm:p-8 text-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.15)]">
         {/* Animated Beacon Lights */}
-        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-600/30 blur-3xl animate-pulse" />
-        <div className="absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-red-600/20 blur-3xl" />
+        <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/40 blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-red-100/50 blur-3xl pointer-events-none" />
 
         {/* ======================================================== */}
         {/* STEP 1: BIFURCATED TRIAGE CHOICE                         */}
         {/* ======================================================== */}
         {step === "SELECT" && (
           <div className="relative z-10 text-center">
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-rose-500/50 bg-rose-950/80 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-300 shadow-lg">
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-700 shadow-xs">
               <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
               <span>{t("triage_choice_title")}</span>
             </div>
 
-            <h2 className="mt-4 text-2xl font-black text-rose-100 tracking-tight">
+            <h2 className="mt-4 text-2xl font-black text-slate-900 tracking-tight">
               Emergency Rapid Response
             </h2>
-            <p className="mt-1.5 text-xs text-rose-300/80 leading-relaxed max-w-sm mx-auto">
+            <p className="mt-1.5 text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
               {t("triage_choice_subtitle")}
             </p>
 
@@ -223,20 +223,20 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={handleSelectAmbulance}
-                className="group w-full rounded-2xl border-2 border-rose-500/50 bg-rose-950/40 p-4 transition-all duration-200 hover:border-rose-400 hover:bg-rose-900/50 hover:scale-[1.02] active:scale-[0.99] text-left shadow-lg"
+                className="group w-full rounded-[1.5rem] border-2 border-rose-200 bg-rose-50/40 p-4 transition-all duration-200 hover:border-rose-400 hover:bg-rose-50 hover:scale-[1.01] active:scale-[0.99] text-left shadow-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-black text-white group-hover:text-rose-200 flex items-center gap-2">
+                  <span className="text-base font-black text-slate-900 group-hover:text-rose-700 flex items-center gap-2">
                     {t("need_ambulance_title")}
                   </span>
-                  <span className="rounded-full bg-rose-500/30 px-2.5 py-0.5 text-[10px] font-bold text-rose-300 border border-rose-400/40">
+                  <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-300">
                     GPS Auto-Dispatch
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-rose-200/80 leading-relaxed">
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
                   {t("need_ambulance_desc")}
                 </p>
-                <div className="mt-3 flex items-center text-xs font-bold text-rose-300 group-hover:translate-x-1 transition-transform">
+                <div className="mt-3 flex items-center text-xs font-bold text-rose-600 group-hover:translate-x-1 transition-transform">
                   Dispatch smart fleet unit →
                 </div>
               </button>
@@ -245,29 +245,29 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={handleSelectSelfArrival}
-                className="group w-full rounded-2xl border-2 border-amber-500/50 bg-amber-950/30 p-4 transition-all duration-200 hover:border-amber-400 hover:bg-amber-900/40 hover:scale-[1.02] active:scale-[0.99] text-left shadow-lg"
+                className="group w-full rounded-[1.5rem] border-2 border-amber-200 bg-amber-50/40 p-4 transition-all duration-200 hover:border-amber-400 hover:bg-amber-50 hover:scale-[1.01] active:scale-[0.99] text-left shadow-xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-black text-white group-hover:text-amber-200 flex items-center gap-2">
+                  <span className="text-base font-black text-slate-900 group-hover:text-amber-800 flex items-center gap-2">
                     {t("coming_by_self_title")}
                   </span>
-                  <span className="rounded-full bg-amber-500/30 px-2.5 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-400/40">
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-300">
                     Gate 1 ER Alert
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-amber-200/80 leading-relaxed">
+                <p className="mt-1 text-xs text-slate-600 leading-relaxed">
                   {t("coming_by_self_desc")}
                 </p>
-                <div className="mt-3 flex items-center text-xs font-bold text-amber-300 group-hover:translate-x-1 transition-transform">
+                <div className="mt-3 flex items-center text-xs font-bold text-amber-700 group-hover:translate-x-1 transition-transform">
                   Mobilize ER triage nurses & stretchers →
                 </div>
               </button>
             </div>
 
-            <div className="mt-6 flex justify-between items-center pt-2 border-t border-slate-800">
+            <div className="mt-6 flex justify-between items-center pt-3 border-t border-slate-100">
               <a
                 href="tel:108"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-400 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:underline"
               >
                 <span>📞</span>
                 <span>{t("call_108")}</span>
@@ -275,7 +275,7 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-400 hover:bg-slate-800 hover:text-white"
+                className="rounded-full px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
               >
                 {t("emergency_close")}
               </button>
@@ -291,7 +291,7 @@ export default function EmergencyModal({
             <button
               type="button"
               onClick={() => setStep("SELECT")}
-              className="text-xs font-bold text-rose-300 hover:text-white flex items-center gap-1 mb-3"
+              className="text-xs font-bold text-rose-600 hover:text-rose-800 flex items-center gap-1 mb-3"
             >
               {t("back_btn")}
             </button>
@@ -299,10 +299,10 @@ export default function EmergencyModal({
             <div className="flex items-center gap-2">
               <span className="text-2xl">🚑</span>
               <div>
-                <h3 className="text-xl font-black text-white">
+                <h3 className="text-xl font-black text-slate-900">
                   Confirm Ambulance Dispatch
                 </h3>
-                <p className="text-xs text-rose-200/80">
+                <p className="text-xs text-slate-500">
                   Autonomous trauma unit #MED-09 will be dispatched immediately.
                 </p>
               </div>
@@ -310,7 +310,7 @@ export default function EmergencyModal({
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-rose-300">
+                <label className="block text-xs font-bold uppercase tracking-wider text-rose-700">
                   {t("accident_location_label")}
                 </label>
                 <div className="mt-1.5 relative">
@@ -320,30 +320,30 @@ export default function EmergencyModal({
                     value={ambulanceLocation}
                     onChange={(e) => setAmbulanceLocation(e.target.value)}
                     placeholder={t("accident_location_placeholder")}
-                    className="w-full rounded-2xl border border-rose-500/50 bg-slate-900/90 px-4 py-3 text-xs sm:text-sm font-semibold text-white placeholder-slate-500 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-500/40"
+                    className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100"
                   />
                   {isGpsLoading && (
-                    <span className="absolute right-3 top-3 text-xs font-bold text-cyan-400 animate-pulse">
+                    <span className="absolute right-4 top-3.5 text-xs font-bold text-teal-600 animate-pulse">
                       Acquiring GPS...
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs space-y-1.5">
-                <div className="flex justify-between text-slate-400">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-xs space-y-2">
+                <div className="flex justify-between text-slate-600">
                   <span>GPS Lat/Lon:</span>
-                  <span className="font-mono font-bold text-cyan-300">
+                  <span className="font-mono font-bold text-rose-700">
                     {latitude}, {longitude}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-slate-600">
                   <span>Assigned Vehicle:</span>
-                  <span className="font-bold text-white">Smart AV-Ambulance #MED-09</span>
+                  <span className="font-bold text-slate-900">Smart AV-Ambulance #MED-09</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-slate-600">
                   <span>Estimated Response:</span>
-                  <span className="font-bold text-emerald-400">~04:30 Minutes (Priority Route)</span>
+                  <span className="font-bold text-emerald-600">~04:30 Minutes (Priority Route)</span>
                 </div>
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function EmergencyModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 px-5 py-3.5 text-xs sm:text-sm font-black text-white shadow-xl shadow-rose-600/30 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 px-5 py-3 text-xs sm:text-sm font-black text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
               >
                 <span>🚨</span>
                 <span>{isSubmitting ? "Dispatching Fleet..." : t("dispatch_ambulance_btn")}</span>
@@ -360,7 +360,7 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-slate-700 bg-slate-800/90 px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100"
               >
                 {t("emergency_close")}
               </button>
@@ -374,67 +374,67 @@ export default function EmergencyModal({
         {step === "AMBULANCE_ACTIVE" && (
           <div className="relative z-10">
             <div className="text-center">
-              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-rose-500/50 bg-rose-950/80 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-300 shadow-lg">
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-rose-700 shadow-xs">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping" />
                 <span>{t("emergency_status_live")}</span>
               </div>
 
-              <h2 className="mt-4 text-xl sm:text-2xl font-black text-rose-100 tracking-tight leading-tight">
+              <h2 className="mt-4 text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
                 {t("emergency_modal_title")}
               </h2>
 
-              <p className="mt-1.5 text-xs text-rose-300/80 font-mono">
+              <p className="mt-1.5 text-xs text-slate-500 font-mono">
                 Incident Dispatch Token:{" "}
-                <strong className="text-white">{activeTelemetry?.token || "EMG-AMB-DISPATCH"}</strong>
+                <strong className="text-rose-700">{activeTelemetry?.token || "EMG-AMB-DISPATCH"}</strong>
               </p>
             </div>
 
             {/* Live Countdown Arrival Card */}
-            <div className="mt-5 rounded-2xl border border-rose-500/40 bg-gradient-to-r from-rose-950/70 via-slate-900/90 to-rose-950/70 p-4 text-center">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-300">
+            <div className="mt-5 rounded-[1.5rem] border border-rose-200 bg-rose-50/60 p-5 text-center">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700">
                 {t("eta_label")}
               </span>
-              <div className="mt-1 font-mono text-3xl sm:text-4xl font-black text-rose-400 tracking-wider">
+              <div className="mt-1 font-mono text-3xl sm:text-4xl font-black text-rose-600 tracking-wider">
                 {formattedCountdown}
               </div>
-              <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-emerald-400">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-emerald-700 font-bold">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                 <span>Autonomous Route Optimization Active</span>
               </div>
             </div>
 
             {/* Telemetry Breakdown Details */}
-            <div className="mt-5 space-y-2.5 rounded-2xl border border-slate-800 bg-slate-900/80 p-4 text-xs">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-slate-400">{t("unit_assigned_label")}</span>
-                <span className="font-bold text-white text-right">
+            <div className="mt-5 space-y-2.5 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <span className="text-slate-500">{t("unit_assigned_label")}</span>
+                <span className="font-bold text-slate-900 text-right">
                   {activeTelemetry?.unit_assigned || "Smart AV-Ambulance #MED-09"}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <span className="text-slate-400">{t("gps_coordinates_label")}</span>
-                <span className="font-mono font-bold text-cyan-300 truncate max-w-[200px]">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <span className="text-slate-500">{t("gps_coordinates_label")}</span>
+                <span className="font-mono font-bold text-teal-700 truncate max-w-[200px]">
                   {activeTelemetry?.location || `${latitude}, ${longitude}`}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">{t("reported_by_label")}</span>
-                <span className="font-semibold text-slate-200">
+                <span className="text-slate-500">{t("reported_by_label")}</span>
+                <span className="font-semibold text-slate-700">
                   {activeTelemetry?.reported_by || t("reported_by_val")}
                 </span>
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-amber-950/40 border border-amber-500/40 p-3 text-[11px] text-amber-200 leading-relaxed text-center">
+            <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-900 leading-relaxed text-center">
               ⚠️ {t("emergency_dispatched_notice")}
             </div>
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <a
                 href="tel:108"
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 px-4 py-3 text-xs sm:text-sm font-black text-white shadow-lg shadow-rose-600/30 transition hover:scale-105 active:scale-95"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 px-4 py-3 text-xs sm:text-sm font-black text-white shadow-md transition hover:scale-105 active:scale-95"
               >
                 <span>📞</span>
                 <span>{t("call_108")}</span>
@@ -443,7 +443,7 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-slate-700 bg-slate-800/90 px-5 py-3 text-xs sm:text-sm font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition active:scale-95"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95"
               >
                 {t("emergency_close")}
               </button>
@@ -459,7 +459,7 @@ export default function EmergencyModal({
             <button
               type="button"
               onClick={() => setStep("SELECT")}
-              className="text-xs font-bold text-amber-300 hover:text-white flex items-center gap-1 mb-3"
+              className="text-xs font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1 mb-3"
             >
               {t("back_btn")}
             </button>
@@ -467,10 +467,10 @@ export default function EmergencyModal({
             <div className="flex items-center gap-2">
               <span className="text-2xl">🚗</span>
               <div>
-                <h3 className="text-xl font-black text-white">
+                <h3 className="text-xl font-black text-slate-900">
                   Hospital Gate 1 ER Mobilization
                 </h3>
-                <p className="text-xs text-amber-200/80">
+                <p className="text-xs text-slate-500">
                   Alert ER staff and prepare stretchers at the main entrance.
                 </p>
               </div>
@@ -478,7 +478,7 @@ export default function EmergencyModal({
 
             <div className="mt-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-amber-300">
+                <label className="block text-xs font-bold uppercase tracking-wider text-amber-800">
                   {t("vehicle_notes_label")}
                 </label>
                 <input
@@ -487,16 +487,16 @@ export default function EmergencyModal({
                   value={vehicleNotes}
                   onChange={(e) => setVehicleNotes(e.target.value)}
                   placeholder={t("vehicle_notes_placeholder")}
-                  className="mt-1.5 w-full rounded-2xl border border-amber-500/50 bg-slate-900/90 px-4 py-3 text-xs sm:text-sm font-semibold text-white placeholder-slate-500 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/40"
+                  className="mt-1.5 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100"
                 />
               </div>
 
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-950/40 p-4 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold text-amber-300">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-amber-900">
                   <span>🏥</span>
                   <span>Destination: Main Hospital Entrance (Gate 1)</span>
                 </div>
-                <p className="text-slate-300 leading-relaxed text-[11px]">
+                <p className="text-slate-600 leading-relaxed text-[11px]">
                   Emergency triage nurses, trauma stretchers, and rapid resuscitation bay are immediately put on standby at Gate 1 upon confirmation.
                 </p>
               </div>
@@ -506,7 +506,7 @@ export default function EmergencyModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-5 py-3.5 text-xs sm:text-sm font-black text-white shadow-xl shadow-amber-600/30 hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-5 py-3 text-xs sm:text-sm font-black text-white shadow-md hover:scale-105 active:scale-95 disabled:opacity-50 transition-all"
               >
                 <span>🚨</span>
                 <span>{isSubmitting ? "Mobilizing Team..." : t("mobilize_gate_btn")}</span>
@@ -514,7 +514,7 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-slate-700 bg-slate-800/90 px-4 py-3 text-xs font-bold text-slate-300 hover:bg-slate-700"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-xs font-bold text-slate-700 hover:bg-slate-100"
               >
                 {t("emergency_close")}
               </button>
@@ -527,51 +527,51 @@ export default function EmergencyModal({
         {/* ======================================================== */}
         {step === "SELF_ACTIVE" && (
           <div className="relative z-10 text-center">
-            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-500/50 bg-amber-950/80 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-amber-300 shadow-lg">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping" />
+            <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-amber-800 shadow-xs">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping" />
               <span>{t("gate_mobilization_active")}</span>
             </div>
 
-            <h2 className="mt-4 text-xl sm:text-2xl font-black text-amber-100 tracking-tight leading-tight">
+            <h2 className="mt-4 text-xl sm:text-2xl font-black text-slate-900 tracking-tight leading-tight">
               Hospital Gate 1 Alert Active
             </h2>
 
-            <div className="mt-4 rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/60 via-slate-900/90 to-amber-950/60 p-4">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400">
+            <div className="mt-4 rounded-[1.5rem] border border-amber-200 bg-amber-50/60 p-4">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
                 {t("gate_token_label")}
               </span>
-              <p className="mt-1 font-mono text-3xl sm:text-4xl font-black text-white tracking-wider">
+              <p className="mt-1 font-mono text-3xl sm:text-4xl font-black text-slate-900 tracking-wider">
                 {activeTelemetry?.token || "EMG-GATE-READY"}
               </p>
-              <span className="mt-2 inline-block rounded-full bg-amber-500/20 px-3 py-1 text-[11px] font-extrabold text-amber-300 border border-amber-400/30">
+              <span className="mt-2 inline-block rounded-full bg-amber-100 px-3 py-1 text-[11px] font-extrabold text-amber-800 border border-amber-300">
                 {t("gate_priority_badge")}
               </span>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-900/90 p-4 text-left text-xs space-y-2">
-              <div className="flex items-center gap-2 font-bold text-white text-sm">
+            <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
                 <span>📍</span>
                 <span>Drive directly to Gate 1 (Main Hospital Entrance)</span>
               </div>
-              <p className="text-slate-300 leading-relaxed text-xs">
+              <p className="text-slate-600 leading-relaxed text-xs">
                 {t("gate_instructions")}
               </p>
               {activeTelemetry?.notes && (
-                <div className="mt-2 pt-2 border-t border-slate-800 flex justify-between text-[11px]">
-                  <span className="text-slate-400">Noted Vehicle / ETA:</span>
-                  <span className="font-bold text-amber-300">{activeTelemetry.notes}</span>
+                <div className="mt-2 pt-2 border-t border-slate-200 flex justify-between text-[11px]">
+                  <span className="text-slate-500">Noted Vehicle / ETA:</span>
+                  <span className="font-bold text-amber-800">{activeTelemetry.notes}</span>
                 </div>
               )}
             </div>
 
-            <div className="mt-4 rounded-xl bg-amber-950/40 border border-amber-500/40 p-3 text-[11px] text-amber-200 leading-relaxed text-center">
+            <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-900 leading-relaxed text-center">
               ⚠️ {t("emergency_dispatched_notice")}
             </div>
 
             <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <a
                 href="tel:108"
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-4 py-3 text-xs sm:text-sm font-black text-white shadow-lg shadow-amber-600/30 transition hover:scale-105 active:scale-95"
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 px-4 py-3 text-xs sm:text-sm font-black text-white shadow-md transition hover:scale-105 active:scale-95"
               >
                 <span>📞</span>
                 <span>{t("call_108")}</span>
@@ -580,7 +580,7 @@ export default function EmergencyModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-2xl border border-slate-700 bg-slate-800/90 px-5 py-3 text-xs sm:text-sm font-bold text-slate-300 hover:bg-slate-700 hover:text-white transition active:scale-95"
+                className="rounded-full border border-slate-200 bg-slate-50 px-5 py-3 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-100 transition active:scale-95"
               >
                 {t("emergency_close")}
               </button>
