@@ -131,13 +131,14 @@ function PatientDashboardContent() {
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-bold text-teal-50 backdrop-blur-md border border-white/20">
                 <span className="flex h-2 w-2 rounded-full bg-amber-300 animate-pulse" />
-                <span>✨ Intelligent Clinical Intake & Fast-Track Triage</span>
+                <span>✨ {t("hero_tag")}</span>
               </div>
               <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl text-white leading-tight">
-                Effortless clinical care, <span className="text-amber-300">never wait again.</span>
+                {t("hero_title")}{" "}
+                <span className="text-amber-300">{t("hero_title_highlight")}</span>
               </h1>
               <p className="mt-3 max-w-xl text-teal-50/90 text-sm sm:text-base leading-relaxed">
-                {t("dashboardSubtitle")}
+                {t("hero_subtitle")}
               </p>
 
               {/* Action Pills */}
@@ -147,7 +148,7 @@ function PatientDashboardContent() {
                   className="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3.5 text-xs sm:text-sm font-extrabold text-[#028090] shadow-md transition-all duration-300 hover:scale-105 hover:bg-teal-50 hover:shadow-lg active:scale-95"
                 >
                   <span>🗓️</span>
-                  <span>{t("bookNewVisit")}</span>
+                  <span>{t("btn_book_consultation")}</span>
                 </Link>
                 <button
                   type="button"
@@ -163,24 +164,24 @@ function PatientDashboardContent() {
               <div className="mt-8 grid grid-cols-3 gap-3 border-t border-white/20 pt-6">
                 <div>
                   <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
-                    SOS Dispatch
+                    {t("metric_dispatch")}
                   </span>
-                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">~3.2m</p>
-                  <span className="text-[10px] text-teal-100/80">Autonomous Response</span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">{t("metric_dispatch_val")}</p>
+                  <span className="text-[10px] text-teal-100/80">{t("metric_dispatch_sub")}</span>
                 </div>
                 <div>
                   <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
-                    OCR Accuracy
+                    {t("metric_accuracy")}
                   </span>
-                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">99.4%</p>
-                  <span className="text-[10px] text-teal-100/80">Prescription Vision</span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">{t("metric_accuracy_val")}</p>
+                  <span className="text-[10px] text-teal-100/80">{t("metric_accuracy_sub")}</span>
                 </div>
                 <div>
                   <span className="text-[11px] font-semibold text-teal-100 uppercase tracking-wider">
-                    Paperwork Delay
+                    {t("metric_delay")}
                   </span>
-                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">0 Mins</p>
-                  <span className="text-[10px] text-teal-100/80">Instant AI Ingestion</span>
+                  <p className="mt-0.5 text-lg sm:text-xl font-black text-white">{t("metric_delay_val")}</p>
+                  <span className="text-[10px] text-teal-100/80">{t("metric_delay_sub")}</span>
                 </div>
               </div>
             </div>
@@ -200,14 +201,12 @@ function PatientDashboardContent() {
 
                   {/* Floating Glass Badge 1 (Top Left) */}
                   <div className="absolute top-4 left-4 backdrop-blur-md bg-white/90 border border-white/40 shadow-lg text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-full flex items-center gap-1.5">
-                    <span>✨</span>
-                    <span>AI Clinical Review: Verified in 12s</span>
+                    <span>{t("badge_ai_review")}</span>
                   </div>
 
                   {/* Floating Glass Badge 2 (Bottom Right) */}
                   <div className="absolute bottom-4 right-4 backdrop-blur-md bg-white/90 border border-white/40 shadow-lg text-slate-800 text-xs font-semibold py-1.5 px-3 rounded-full flex items-center gap-1.5">
-                    <span>👨‍⚕️</span>
-                    <span>On-Duty Triage: Dr. Sharma, MD</span>
+                    <span>{t("badge_on_duty")}</span>
                   </div>
                 </div>
               </div>
@@ -223,15 +222,15 @@ function PatientDashboardContent() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-[#00A896]">
-                  Real-Time Vitals
+                  {t("tag_vitals")}
                 </span>
                 <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <h3 className="mt-4 text-lg font-black text-slate-900">
-                Queue & Vitals Status
+                {t("queue_vitals_heading")}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                {appointment ? `${appointment.department} Consultation Wing` : "Clinical Queue Telemetry"}
+                {appointment ? `${appointment.department} Consultation Wing` : t("queue_vitals_sub")}
               </p>
 
               <div className="mt-4 rounded-2xl bg-teal-50/60 border border-teal-100 p-4">
@@ -240,13 +239,13 @@ function PatientDashboardContent() {
                   <div>
                     <p className="text-sm font-extrabold text-slate-900">
                       {currentStatus === "Completed"
-                        ? "Visit Completed"
+                        ? t("visit_completed")
                         : currentStatus === "In-Consultation"
-                        ? "In Consultation Now"
+                        ? t("inConsultation")
                         : "2 Patients Ahead (~10 min ETA)"}
                     </p>
                     <p className="text-[11px] text-teal-800 font-medium">
-                      Priority triage automated by Grok Clinical Engine
+                      {t("visit_automated")}
                     </p>
                   </div>
                 </div>
@@ -256,13 +255,13 @@ function PatientDashboardContent() {
                 <div className="flex items-center justify-between py-1.5 border-b border-slate-50">
                   <span className="text-slate-500">Fleet Response:</span>
                   <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                    Smart AV-Ambulance MED-09 (Standby)
+                    {t("ambulance_standby")}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-1.5">
                   <span className="text-slate-500">ER Mobilization:</span>
                   <span className="font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
-                    Gateway Mobilization (Gate 1 Ready)
+                    {t("gate_ready")}
                   </span>
                 </div>
               </div>
@@ -283,34 +282,34 @@ function PatientDashboardContent() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
-                  Document Intelligence
+                  {t("tag_doc_intel")}
                 </span>
                 <span className="text-sm">📄</span>
               </div>
               <h3 className="mt-4 text-lg font-black text-slate-900">
-                Clinical Record Vault
+                {t("vault_heading")}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Multimodal Sarvam OCR & Grok Vision digitization
+                {t("vault_sub")}
               </p>
 
               <div className="mt-4 space-y-2.5 text-xs">
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span>💊</span>
-                    <span className="font-bold text-slate-700">Prescription Ingestion</span>
+                    <span className="font-bold text-slate-700">{t("prescription_ingest")}</span>
                   </div>
                   <span className="text-[11px] font-bold text-emerald-600">
-                    {rxUrl ? "Attached & Verified" : "Ready for Upload"}
+                    {rxUrl ? t("attached_verified") : "Ready for Upload"}
                   </span>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span>🩻</span>
-                    <span className="font-bold text-slate-700">Radiology / Lab Scan</span>
+                    <span className="font-bold text-slate-700">{t("radiology_scan")}</span>
                   </div>
                   <span className="text-[11px] font-bold text-emerald-600">
-                    {reportUrl ? "Attached & Verified" : "Ready for Upload"}
+                    {reportUrl ? t("attached_verified") : "Ready for Upload"}
                   </span>
                 </div>
               </div>
@@ -321,7 +320,7 @@ function PatientDashboardContent() {
                 href={activeToken ? `/patient-details?token=${encodeURIComponent(activeToken)}` : "/patient-details"}
                 className="block text-center rounded-full bg-slate-50 hover:bg-indigo-50 py-2.5 text-xs font-bold text-indigo-700 transition"
               >
-                Manage Uploaded Documents →
+                {t("btn_manage_docs")}
               </Link>
             </div>
           </div>
@@ -331,19 +330,19 @@ function PatientDashboardContent() {
             <div>
               <div className="flex items-center justify-between">
                 <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                  Hospital Protocol
+                  {t("tag_protocol")}
                 </span>
                 <span className="text-sm">🏥</span>
               </div>
               <h3 className="mt-4 text-lg font-black text-slate-900">
-                Zero-Delay Clinical Protocol
+                {t("protocol_heading")}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Check-in, consultation sequence, and triage guidance
+                {t("protocol_sub")}
               </p>
 
               <div className="mt-4 rounded-2xl bg-amber-50/60 border border-amber-100 p-3.5 text-xs text-amber-900 leading-relaxed">
-                Please arrive 5-10 minutes before your scheduled slot. Present your digital token at the triage desk for express check-in.
+                {t("protocol_box")}
               </div>
             </div>
 
@@ -352,7 +351,7 @@ function PatientDashboardContent() {
                 href="/appointment"
                 className="block text-center rounded-full bg-slate-50 hover:bg-amber-50 py-2.5 text-xs font-bold text-amber-800 transition"
               >
-                View Department Guide →
+                {t("btn_dept_guide")}
               </Link>
             </div>
           </div>
@@ -545,7 +544,7 @@ function PatientDashboardContent() {
                           docVaultTab === "rx" ? "bg-white text-teal-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        Prescriptions ({rxUrl ? 1 : 0})
+                        {t("rx_title")} ({rxUrl ? 1 : 0})
                       </button>
                       <button
                         type="button"
@@ -554,7 +553,7 @@ function PatientDashboardContent() {
                           docVaultTab === "report" ? "bg-white text-teal-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
                         }`}
                       >
-                        Reports & Scans ({reportUrl ? 1 : 0})
+                        {t("reports_title")} ({reportUrl ? 1 : 0})
                       </button>
                     </div>
                   </div>
@@ -573,7 +572,7 @@ function PatientDashboardContent() {
                               </p>
                               <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                {t("encryptedVerified")} · Digitized by Sarvam
+                                {t("encryptedVerified")} · Sarvam AI
                               </span>
                             </div>
                           </div>
@@ -583,7 +582,7 @@ function PatientDashboardContent() {
                               onClick={() => setPreviewDocModal(rxUrl)}
                               className="rounded-full bg-[#00A896] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#028090]"
                             >
-                              [ View Original ]
+                              [ {t("preview")} ]
                             </button>
                             <a
                               href={rxUrl}
@@ -591,7 +590,7 @@ function PatientDashboardContent() {
                               rel="noopener noreferrer"
                               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
-                              [ Download PDF ]
+                              [ {t("download")} ]
                             </a>
                           </div>
                         </div>
@@ -619,7 +618,7 @@ function PatientDashboardContent() {
                               </p>
                               <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                {t("encryptedVerified")} · Grok Vision Verified
+                                {t("encryptedVerified")} · Grok Vision
                               </span>
                             </div>
                           </div>
@@ -629,7 +628,7 @@ function PatientDashboardContent() {
                               onClick={() => setPreviewDocModal(reportUrl)}
                               className="rounded-full bg-[#00A896] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#028090]"
                             >
-                              [ View Original ]
+                              [ {t("preview")} ]
                             </button>
                             <a
                               href={reportUrl}
@@ -637,7 +636,7 @@ function PatientDashboardContent() {
                               rel="noopener noreferrer"
                               className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
                             >
-                              [ Download PDF ]
+                              [ {t("download")} ]
                             </a>
                           </div>
                         </div>
@@ -692,13 +691,13 @@ function PatientDashboardContent() {
         <section className="mt-10 rounded-[2rem] border border-slate-100 bg-white p-6 sm:p-8 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
           <div className="text-center max-w-2xl mx-auto">
             <span className="rounded-full bg-teal-50 px-3 py-1 text-xs font-extrabold text-[#00A896]">
-              Intelligent Workflow
+              {t("steps_badge")}
             </span>
             <h3 className="mt-2 text-xl sm:text-2xl font-black text-slate-900">
-              3 Simple Steps to Clinical Intake
+              {t("steps_heading")}
             </h3>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">
-              How MediBridge AI accelerates diagnosis and eliminates administrative wait time
+              {t("steps_sub")}
             </p>
           </div>
 
@@ -708,10 +707,10 @@ function PatientDashboardContent() {
                 1
               </div>
               <h4 className="mt-3 text-sm font-bold text-slate-900">
-                Voice & Document Intake
+                {t("step1_title")}
               </h4>
               <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                Dictate your symptoms in English, Hindi, or Telugu, or snap a picture of your past prescription.
+                {t("step1_desc")}
               </p>
             </div>
 
@@ -720,10 +719,10 @@ function PatientDashboardContent() {
                 2
               </div>
               <h4 className="mt-3 text-sm font-bold text-slate-900">
-                Autonomous OCR & Synthesis
+                {t("step2_title")}
               </h4>
               <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                Sarvam OCR and Grok AI extract clinical biomarkers, medications, and differential diagnoses in seconds.
+                {t("step2_desc")}
               </p>
             </div>
 
@@ -732,10 +731,10 @@ function PatientDashboardContent() {
                 3
               </div>
               <h4 className="mt-3 text-sm font-bold text-slate-900">
-                Direct Express Consultation
+                {t("step3_title")}
               </h4>
               <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-                Walk into your consultation room with your doctor already briefed on your full medical profile.
+                {t("step3_desc")}
               </p>
             </div>
           </div>
