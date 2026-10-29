@@ -69,7 +69,12 @@ export async function GET(req: Request) {
       };
     });
 
-    return NextResponse.json({ ok: true, data: formattedData });
+    return NextResponse.json({
+      ok: true,
+      data: formattedData,
+      appointments: formattedData,
+      appointment: formattedData[0] || null,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch appointments" },

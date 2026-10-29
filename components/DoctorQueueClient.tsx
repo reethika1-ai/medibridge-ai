@@ -95,40 +95,48 @@ export function isRedAlert(apt?: AppointmentItem | null): boolean {
     apt.urgency_level === "CRITICAL_RED_ALERT" ||
       apt.parsed_summary?.urgency_level === "CRITICAL_RED_ALERT" ||
       apt.token?.startsWith("EMG-") ||
-      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY") ||
+      apt.patient_name?.includes("CRITICAL TRAUMA") ||
       apt.patient_name?.includes("CRITICAL ACCIDENT") ||
-      apt.patient_name?.includes("INCOMING TRAUMA")
+      apt.patient_name?.includes("INCOMING TRAUMA") ||
+      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY") ||
+      apt.symptoms?.includes("[AMBULANCE DISPATCHED]") ||
+      apt.symptoms?.includes("[SELF-ARRIVAL GATE 1]")
   );
 }
 
-export function playRedAlertTone() {
+/**
+ * Two-tone Emergency Hospital Siren (960 Hz <-> 770 Hz)
+ */
+export function playEmergencySiren() {
   if (typeof window === "undefined") return;
   try {
     const AudioContextClass =
       window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
-    const now = ctx.currentTime;
-    [0, 0.16, 0.32].forEach((delay) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(880, now + delay);
-      osc.frequency.exponentialRampToValueAtTime(440, now + delay + 0.12);
 
-      gain.gain.setValueAtTime(0.25, now + delay);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now + delay);
-      osc.stop(now + delay + 0.12);
-    });
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(960, ctx.currentTime);
+    osc.frequency.setValueAtTime(770, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(960, ctx.currentTime + 0.6);
+    osc.frequency.setValueAtTime(770, ctx.currentTime + 0.9);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1.2);
   } catch (err) {
-    console.warn("Could not play red alert tone:", err);
+    console.warn("Could not play emergency siren:", err);
   }
 }
+
+export const playRedAlertTone = playEmergencySiren;
 
 export default function DoctorQueueClient({
   initialAppointments,
@@ -146,6 +154,11 @@ export default function DoctorQueueClient({
 
   const seenRedAlertsRef = useRef<Set<string>>(new Set());
 
+  // Keep state synchronized with prop updates (e.g. from real-time polling)
+  useEffect(() => {
+    setAppointments(initialAppointments);
+  }, [initialAppointments]);
+
   useEffect(() => {
     let hasNewRedAlert = false;
     appointments.forEach((apt) => {
@@ -158,7 +171,7 @@ export default function DoctorQueueClient({
     });
 
     if (hasNewRedAlert) {
-      playRedAlertTone();
+      playEmergencySiren();
     }
   }, [appointments]);
 
@@ -437,11 +450,17 @@ export default function DoctorQueueClient({
                               <div className="flex items-center gap-2">
                                 <span className="flex h-2.5 w-2.5 rounded-full bg-red-400 animate-ping" />
                                 <span className="text-red-100">
-                                  🚨 PRIORITY #0: AUTONOMOUS AMBULANCE DISPATCHED — CRITICAL ROAD TRAUMA ALERT
+                                  {apt.token?.startsWith("EMG-GATE") ||
+                                  apt.parsed_summary?.mode === "SELF_ARRIVAL"
+                                    ? "🚨 PRIORITY #0: HOSPITAL GATE 1 INCOMING CASUALTY — RAPID ER MOBILIZATION ALERT"
+                                    : "🚨 PRIORITY #0: AUTONOMOUS AMBULANCE DISPATCHED — CRITICAL ROAD TRAUMA ALERT"}
                                 </span>
                               </div>
                               <span className="rounded-md bg-black/60 px-2.5 py-0.5 text-[10px] font-mono text-cyan-300 border border-red-400/40">
-                                UNIT #MED-09 EN ROUTE
+                                {apt.token?.startsWith("EMG-GATE") ||
+                                apt.parsed_summary?.mode === "SELF_ARRIVAL"
+                                  ? "GATE 1 ENTRANCE STANDBY"
+                                  : "UNIT #MED-09 EN ROUTE"}
                               </span>
                             </div>
                           </td>

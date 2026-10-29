@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import DoctorQueueClient, { AppointmentItem, isRedAlert } from "@/components/DoctorQueueClient";
 
@@ -9,6 +9,38 @@ interface HospitalPortalClientProps {
 }
 
 type HospitalTab = "doctor" | "ambulance" | "gate";
+
+/**
+ * Two-tone Emergency Hospital Siren (960 Hz <-> 770 Hz)
+ */
+export function playEmergencySiren() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(960, ctx.currentTime);
+    osc.frequency.setValueAtTime(770, ctx.currentTime + 0.3);
+    osc.frequency.setValueAtTime(960, ctx.currentTime + 0.6);
+    osc.frequency.setValueAtTime(770, ctx.currentTime + 0.9);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 1.2);
+  } catch (err) {
+    console.warn("Could not play emergency siren:", err);
+  }
+}
 
 export default function HospitalPortalClient({
   initialAppointments,
@@ -23,9 +55,17 @@ export default function HospitalPortalClient({
   const [appointments, setAppointments] = useState<AppointmentItem[]>(initialAppointments);
   const [updatingToken, setUpdatingToken] = useState<string | null>(null);
 
-  // Interactive checklists per gate casualty token
-  const [gateChecklists, setGateChecklists] = useState<Record<string, { stretcher: boolean; nurse: boolean; bay: boolean }>>({});
+  // Track acknowledged red alerts to fire siren on new alerts
+  const seenEmergenciesRef = useRef<Set<string>>(
+    new Set(initialAppointments.filter((a) => isRedAlert(a)).map((a) => a.token))
+  );
 
+  // Interactive checklists per gate casualty token
+  const [gateChecklists, setGateChecklists] = useState<
+    Record<string, { stretcher: boolean; nurse: boolean; bay: boolean }>
+  >({});
+
+  // Sync tab with URL
   useEffect(() => {
     const tabParam = searchParams.get("tab") as HospitalTab;
     if (tabParam && ["doctor", "ambulance", "gate"].includes(tabParam)) {
@@ -38,13 +78,58 @@ export default function HospitalPortalClient({
     router.replace(`/hospital?tab=${tab}`);
   }
 
+  // Real-time synchronization: poll /api/appointments every 3s to populate Tabs 1, 2, and 3 instantly
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchLatestAppointments() {
+      try {
+        const res = await fetch("/api/appointments", { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json();
+        const items: AppointmentItem[] = json.appointments || json.data || [];
+
+        if (isMounted && Array.isArray(items)) {
+          let hasNewEmergency = false;
+
+          items.forEach((apt) => {
+            if (isRedAlert(apt)) {
+              if (!seenEmergenciesRef.current.has(apt.token)) {
+                seenEmergenciesRef.current.add(apt.token);
+                hasNewEmergency = true;
+              }
+            }
+          });
+
+          if (hasNewEmergency) {
+            playEmergencySiren();
+          }
+
+          setAppointments(items);
+        }
+      } catch (e) {
+        // Silent network retry
+      }
+    }
+
+    const intervalId = setInterval(fetchLatestAppointments, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
+
   // Filter for Ambulance Fleet
   const ambulanceAppointments = appointments.filter((apt) => {
     return Boolean(
       apt.token?.startsWith("EMG-AMB") ||
-        (apt.symptoms && apt.symptoms.includes("AMBULANCE SOS")) ||
+        apt.symptoms?.includes("[AMBULANCE DISPATCHED]") ||
+        apt.symptoms?.includes("AMBULANCE SOS") ||
         apt.parsed_summary?.mode === "AMBULANCE" ||
-        (apt.token?.startsWith("EMG-") && !apt.token?.startsWith("EMG-GATE"))
+        (apt.token?.startsWith("EMG-") &&
+          !apt.token?.startsWith("EMG-GATE") &&
+          !apt.symptoms?.includes("SELF-ARRIVAL") &&
+          !apt.symptoms?.includes("SELF ARRIVAL"))
     );
   });
 
@@ -52,7 +137,9 @@ export default function HospitalPortalClient({
   const gateAppointments = appointments.filter((apt) => {
     return Boolean(
       apt.token?.startsWith("EMG-GATE") ||
-        (apt.symptoms && apt.symptoms.includes("SELF ARRIVAL")) ||
+        apt.symptoms?.includes("[SELF-ARRIVAL GATE 1]") ||
+        apt.symptoms?.includes("SELF ARRIVAL") ||
+        apt.symptoms?.includes("SELF-ARRIVAL") ||
         apt.parsed_summary?.mode === "SELF_ARRIVAL"
     );
   });
@@ -171,7 +258,7 @@ export default function HospitalPortalClient({
           </button>
         </div>
 
-        {/* Global Trauma Alert Indicator */}
+        {/* Global Trauma Alert Indicator & Siren Test Button */}
         <div className="flex items-center gap-3 px-3">
           {redAlertTotal > 0 && (
             <div className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/50 px-3 py-1.5 text-xs font-black text-red-200 animate-pulse">
@@ -179,6 +266,17 @@ export default function HospitalPortalClient({
               <span>{redAlertTotal} RED ALERT CASUALTIES</span>
             </div>
           )}
+
+          {/* Two-tone Emergency Siren Test Button */}
+          <button
+            type="button"
+            onClick={playEmergencySiren}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-950/60 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-900/60 transition active:scale-95 shadow-sm"
+            title="Test ER Hospital Siren (960 Hz <-> 770 Hz)"
+          >
+            <span className="animate-bounce">🔊</span>
+            <span>Test ER Siren</span>
+          </button>
         </div>
       </div>
 
@@ -372,8 +470,12 @@ export default function HospitalPortalClient({
               {gateAppointments.map((apt) => {
                 const isReceived = apt.status === "In-Consultation" || apt.status === "Completed";
                 const notes =
+                  apt.parsed_summary?.notes ||
                   apt.parsed_summary?.vehicle_notes ||
-                  apt.symptoms?.replace("SELF ARRIVAL TRAUMA CASUALTY. ER Gate Staff Alerted. Vehicle Notes: ", "") ||
+                  apt.symptoms?.replace(
+                    "SELF ARRIVAL TRAUMA CASUALTY. ER Gate Staff Alerted. Vehicle Notes: ",
+                    ""
+                  ) ||
                   "Private Vehicle / Inbound";
 
                 const checklist = gateChecklists[apt.token] || {
@@ -490,4 +592,3 @@ export default function HospitalPortalClient({
     </div>
   );
 }
-
