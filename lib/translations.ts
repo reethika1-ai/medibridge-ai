@@ -5,6 +5,7 @@ export const translations = {
     navbar_brand_subtitle: "Clinical Triage & Healthcare Operating System",
     navbar_book_appointment: "Book Appointment",
     navbar_doctor_portal: "Doctor Portal",
+    navbar_hospital_portal: "Hospital Portal",
     navbar_patient_dashboard: "Patient Dashboard",
     navbar_emergency_sos: "🚨 Roadside Emergency SOS",
     select_language: "Language",
@@ -77,6 +78,27 @@ export const translations = {
     emergency_close: "Dismiss Telemetry Screen",
     emergency_dispatched_notice:
       "Hospital Trauma Bay alerted. Resuscitation team and crash cart on standby.",
+
+    // Bifurcated Emergency Modal Keys
+    triage_choice_title: "Emergency Response Triage",
+    triage_choice_subtitle: "Select how the patient will reach the emergency trauma department:",
+    need_ambulance_title: "🚑 Need an Ambulance",
+    need_ambulance_desc: "Dispatch smart/autonomous ambulance to the accident or patient location.",
+    coming_by_self_title: "🚗 Coming by Self",
+    coming_by_self_desc:
+      "Private vehicle or taxi. Mobilize ER triage nurses, stretchers, and emergency trauma bay at the hospital gate.",
+    accident_location_label: "Accident Location / Nearest Landmark",
+    accident_location_placeholder: "e.g. Ring Road Junction, near Metro Pillar #42",
+    vehicle_notes_label: "Vehicle Type / ETA (e.g. White Swift / 5 mins)",
+    vehicle_notes_placeholder: "e.g. White Swift / 5 mins",
+    dispatch_ambulance_btn: "Confirm & Dispatch Ambulance",
+    mobilize_gate_btn: "Mobilize Hospital Gate & ER Team",
+    gate_mobilization_active: "🚨 GATE MOBILIZATION ACTIVE",
+    gate_instructions:
+      "Drive directly to Main Hospital Entrance (Gate 1). Trauma nurses and stretcher unit have been deployed to meet your vehicle.",
+    gate_token_label: "Casualty Gate Token",
+    gate_priority_badge: "High Priority Emergency",
+    back_btn: "← Change Option",
 
     // Patient Dashboard Keys
     dashboardTitle: "Patient Health Dashboard",
@@ -156,6 +178,7 @@ export const translations = {
     navbar_brand_subtitle: "क्लिनिकल ट्रायज और हेल्थकेयर ऑपरेटिंग सिस्टम",
     navbar_book_appointment: "अपॉइंटमेंट बुक करें",
     navbar_doctor_portal: "डॉक्टर पोर्टल",
+    navbar_hospital_portal: "अस्पताल पोर्टल",
     navbar_patient_dashboard: "मरीज़ डैशबोर्ड",
     navbar_emergency_sos: "🚨 आपातकालीन दुर्घटना SOS",
     select_language: "भाषा",
@@ -228,6 +251,27 @@ export const translations = {
     emergency_close: "स्क्रीन बंद करें",
     emergency_dispatched_notice:
       "अस्पताल ट्रॉमा टीम को सतर्क कर दिया गया है। ट्रॉमा रिससिटेशन टीम तैयार है।",
+
+    // Bifurcated Emergency Modal Keys
+    triage_choice_title: "आपातकालीन प्रतिक्रिया चयन",
+    triage_choice_subtitle: "मरीज़ आपातकालीन विभाग तक कैसे पहुंचेगा, चयन करें:",
+    need_ambulance_title: "🚑 एम्बुलेंस चाहिए",
+    need_ambulance_desc: "दुर्घटना या मरीज़ के स्थान पर स्मार्ट/ऑटोनॉमस एम्बुलेंस भेजें।",
+    coming_by_self_title: "🚗 स्वयं आ रहे हैं",
+    coming_by_self_desc:
+      "निजी वाहन या टैक्सी। अस्पताल के गेट पर ईआर ट्रायज नर्स, स्ट्रेचर और आपातकालीन ट्रॉमा बे तैयार करें।",
+    accident_location_label: "दुर्घटना स्थल / निकटतम लैंडमार्क",
+    accident_location_placeholder: "उदा. रिंग रोड जंक्शन, मेट्रो पिलर #42",
+    vehicle_notes_label: "वाहन का प्रकार / आने का अनुमानित समय (उदा. सफ़ेद स्विफ्ट / 5 मिनट)",
+    vehicle_notes_placeholder: "उदा. सफ़ेद स्विफ्ट / 5 मिनट",
+    dispatch_ambulance_btn: "पुष्टि करें और एम्बुलेंस भेजें",
+    mobilize_gate_btn: "अस्पताल गेट व ईआर टीम को सतर्क करें",
+    gate_mobilization_active: "🚨 गेट पर आपातकालीन टीम सतर्क",
+    gate_instructions:
+      "सीधे मुख्य अस्पताल प्रवेश द्वार (गेट 1) पर आएं। आपके वाहन का स्वागत करने के लिए ट्रॉमा नर्स और स्ट्रेचर यूनिट तैनात हैं।",
+    gate_token_label: "कैजुअल्टी गेट टोकन",
+    gate_priority_badge: "उच्च प्राथमिकता आपातकाल",
+    back_btn: "← विकल्प बदलें",
 
     // Patient Dashboard Keys
     dashboardTitle: "मरीज़ स्वास्थ्य डैशबोर्ड",
@@ -306,6 +350,7 @@ export const translations = {
     navbar_brand_subtitle: "క్లినికల్ ట్రయాజ్ & హెల్త్‌కేర్ ఆపరేటింగ్ సిస్టమ్",
     navbar_book_appointment: "అపాయింట్‌మెంట్ బుక్ చేయండి",
     navbar_doctor_portal: "డాక్టర్ పోర్టల్",
+    navbar_hospital_portal: "ఆసుపత్రి పోర్టల్",
     navbar_patient_dashboard: "రోగి డాష్‌బోర్డ్",
     navbar_emergency_sos: "🚨 అత్యవసర రోడ్డు ప్రమాదం SOS",
     select_language: "భాష",
@@ -378,6 +423,27 @@ export const translations = {
     emergency_close: "స్క్రీన్‌ను మూసివేయండి",
     emergency_dispatched_notice:
       "ఆసుపత్రి ట్రామా బే అప్రమత్తమైంది. అత్యవసర వైద్య బృందం సిద్ధంగా ఉంది.",
+
+    // Bifurcated Emergency Modal Keys
+    triage_choice_title: "అత్యవసర ప్రతిస్పందన ఎంపిక",
+    triage_choice_subtitle: "రోగి అత్యవసర విభాగానికి ఎలా చేరుకుంటారో ఎంచుకోండి:",
+    need_ambulance_title: "🚑 అంబులెన్స్ కావాలి",
+    need_ambulance_desc: "ప్రమాదం లేదా రోగి ఉన్న ప్రదేశానికి స్మార్ట్/అటానమస్ అంబులెన్స్‌ను పంపండి.",
+    coming_by_self_title: "🚗 సొంత వాహనంలో వస్తున్నాము",
+    coming_by_self_desc:
+      "ప్రైవేట్ వాహనం లేదా టాక్సీ. ఆసుపత్రి గేట్ వద్ద అత్యవసర ట్రయాజ్ నర్సులు, స్ట్రెచర్లు మరియు ట్రామా బేను సిద్ధం చేయండి.",
+    accident_location_label: "ప్రమాద స్థలం / సమీప ల్యాండ్‌మార్క్",
+    accident_location_placeholder: "ఉదా. రింగ్ రోడ్ జంక్షన్, మెట్రో పిల్లర్ #42 వద్ద",
+    vehicle_notes_label: "వాహనం రకం / చేరుకునే సమయం (ఉదా. వైట్ స్విఫ్ట్ / 5 నిమిషాలు)",
+    vehicle_notes_placeholder: "ఉదా. వైట్ స్విఫ్ట్ / 5 నిమిషాలు",
+    dispatch_ambulance_btn: "ధృవీకరించి అంబులెన్స్ పంపండి",
+    mobilize_gate_btn: "ఆసుపత్రి గేట్ & ER బృందాన్ని సిద్ధం చేయండి",
+    gate_mobilization_active: "🚨 గేట్ సమీకరణ సక్రియంగా ఉంది",
+    gate_instructions:
+      "నేరుగా ప్రధాన ఆసుపత్రి ప్రవేశ ద్వారం (గేట్ 1) వద్దకు రండి. మీ వాహనాన్ని చేరుకోవడానికి ట్రామా నర్సులు మరియు స్ట్రెచర్ యూనిట్ సిద్ధంగా ఉన్నాయి.",
+    gate_token_label: "క్యాజువాల్టీ గేట్ టోకెన్",
+    gate_priority_badge: "అత్యధిక ప్రాధాన్యత అత్యవసరం",
+    back_btn: "← ఎంపికను మార్చండి",
 
     // Patient Dashboard Keys
     dashboardTitle: "రోగి ఆరోగ్య డాష్‌బోర్డ్",

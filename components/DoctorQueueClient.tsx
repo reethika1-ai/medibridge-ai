@@ -81,6 +81,11 @@ export type AppointmentItem = {
     prescription_url?: string | null;
     report_url?: string | null;
     document_url?: string | null;
+    mode?: string | null;
+    location?: string | null;
+    vehicle_notes?: string | null;
+    gate_number?: string | null;
+    [key: string]: any;
   } | null;
 };
 
@@ -90,7 +95,9 @@ export function isRedAlert(apt?: AppointmentItem | null): boolean {
     apt.urgency_level === "CRITICAL_RED_ALERT" ||
       apt.parsed_summary?.urgency_level === "CRITICAL_RED_ALERT" ||
       apt.token?.startsWith("EMG-") ||
-      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY")
+      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY") ||
+      apt.patient_name?.includes("CRITICAL ACCIDENT") ||
+      apt.patient_name?.includes("INCOMING TRAUMA")
   );
 }
 
@@ -603,18 +610,24 @@ export default function DoctorQueueClient({
 
             {/* Drawer Scrollable Body: EXACT 6-TIER BRIEFING LAYOUT */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* DEDICATED AUTONOMOUS AMBULANCE FLEET TELEMETRY CARD FOR RED ALERT */}
+              {/* DEDICATED RED ALERT TELEMETRY CARD (AMBULANCE VS GATE MOBILIZATION) */}
               {isRedAlert(selectedAppointment) && (
                 <div className="rounded-3xl border-2 border-red-500 bg-gradient-to-r from-red-950 via-slate-900 to-red-950 p-5 shadow-2xl shadow-red-950/80 animate-pulse">
                   <div className="flex items-center justify-between border-b border-red-500/40 pb-3">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-3 w-3 rounded-full bg-red-500 animate-ping" />
                       <h4 className="text-xs font-black uppercase tracking-wider text-red-200">
-                        AUTONOMOUS AMBULANCE FLEET TELEMETRY
+                        {selectedAppointment?.token?.startsWith("EMG-GATE") ||
+                        selectedAppointment?.parsed_summary?.mode === "SELF_ARRIVAL"
+                          ? "HOSPITAL GATE 1 ER MOBILIZATION TELEMETRY"
+                          : "AUTONOMOUS AMBULANCE FLEET TELEMETRY"}
                       </h4>
                     </div>
                     <span className="rounded-full bg-red-500/20 border border-red-400 px-3 py-0.5 text-[11px] font-black text-red-300">
-                      DISPATCH STATUS: EN ROUTE (LEVEL 1 TRAUMA)
+                      {selectedAppointment?.token?.startsWith("EMG-GATE") ||
+                      selectedAppointment?.parsed_summary?.mode === "SELF_ARRIVAL"
+                        ? "GATE 1 MOBILIZED (LEVEL 1 TRAUMA)"
+                        : "DISPATCH STATUS: EN ROUTE (LEVEL 1 TRAUMA)"}
                     </span>
                   </div>
 
@@ -623,15 +636,23 @@ export default function DoctorQueueClient({
                       <span className="text-[10px] uppercase font-bold text-slate-400">Assigned Unit</span>
                       <p className="mt-1 font-mono font-bold text-white text-xs sm:text-sm">
                         {selectedAppointment?.parsed_summary?.unit_assigned ||
-                          "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)"}
+                          (selectedAppointment?.token?.startsWith("EMG-GATE")
+                            ? "Gate 1 ER Rapid Mobilization Unit"
+                            : "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)")}
                       </p>
                     </div>
 
                     <div className="rounded-2xl bg-black/60 p-3 border border-red-500/30">
-                      <span className="text-[10px] uppercase font-bold text-slate-400">Live GPS Coordinates</span>
-                      <p className="mt-1 font-mono font-bold text-cyan-300 text-xs sm:text-sm">
-                        {selectedAppointment?.parsed_summary?.latitude || "17.4435° N"},{" "}
-                        {selectedAppointment?.parsed_summary?.longitude || "78.3772° E"}
+                      <span className="text-[10px] uppercase font-bold text-slate-400">
+                        {selectedAppointment?.token?.startsWith("EMG-GATE") ||
+                        selectedAppointment?.parsed_summary?.mode === "SELF_ARRIVAL"
+                          ? "Vehicle / Inbound Notes"
+                          : "Live GPS Coordinates"}
+                      </span>
+                      <p className="mt-1 font-mono font-bold text-cyan-300 text-xs sm:text-sm truncate">
+                        {selectedAppointment?.parsed_summary?.vehicle_notes ||
+                          selectedAppointment?.parsed_summary?.location ||
+                          `${selectedAppointment?.parsed_summary?.latitude || "17.4435° N"}, ${selectedAppointment?.parsed_summary?.longitude || "78.3772° E"}`}
                       </p>
                     </div>
 
@@ -646,7 +667,10 @@ export default function DoctorQueueClient({
                   <div className="mt-3 flex items-center justify-between text-[11px] text-red-300">
                     <span>
                       Incident Origin:{" "}
-                      {selectedAppointment?.parsed_summary?.reported_by || "Bystander / Roadside Alert"}
+                      {selectedAppointment?.parsed_summary?.reported_by ||
+                        (selectedAppointment?.token?.startsWith("EMG-GATE")
+                          ? "Incoming Patient / Bystander at Gate"
+                          : "Bystander / Roadside Alert")}
                     </span>
                     <span className="font-semibold text-emerald-400">✓ Resuscitation & Crash-Cart Ready</span>
                   </div>

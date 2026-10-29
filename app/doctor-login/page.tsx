@@ -28,7 +28,7 @@ export default function DoctorLoginPage() {
       }
 
       if (res.ok || res.status === 200) {
-        window.location.href = "/doctor";
+        window.location.href = "/hospital?tab=doctor";
       }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Physician authentication failed.");

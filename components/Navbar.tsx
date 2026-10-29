@@ -17,10 +17,13 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
 
   const [emergencyModalOpen, setEmergencyModalOpen] = useState(false);
   const [emergencyTelemetry, setEmergencyTelemetry] = useState<any>(null);
-  const [isEmergencyLoading, setIsEmergencyLoading] = useState(false);
 
-  const isDoctorRoute = Boolean(pathname?.startsWith("/doctor") || (theme as string) === "dark");
-  const isDark = isDoctorRoute;
+  const isHospitalRoute = Boolean(
+    pathname?.startsWith("/hospital") ||
+      pathname?.startsWith("/doctor") ||
+      (theme as string) === "dark"
+  );
+  const isDark = isHospitalRoute;
 
   async function handleDoctorSignOut() {
     await fetch("/api/doctor-login", { method: "DELETE" });
@@ -28,53 +31,9 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
     router.refresh();
   }
 
-  async function handleTriggerEmergency() {
-    setIsEmergencyLoading(true);
-    let lat = "17.4435° N";
-    let lon = "78.3772° E";
-
-    if (typeof window !== "undefined" && navigator.geolocation) {
-      try {
-        const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            timeout: 3000,
-            enableHighAccuracy: true,
-          });
-        });
-        lat = `${pos.coords.latitude.toFixed(4)}° N`;
-        lon = `${pos.coords.longitude.toFixed(4)}° E`;
-      } catch {
-        lat = "City Trauma Center Hub";
-        lon = "GPS Pending";
-      }
-    }
-
-    try {
-      const res = await fetch("/api/emergency", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          latitude: lat,
-          longitude: lon,
-          reported_by: "Bystander / Roadside Alert",
-        }),
-      });
-      const data = await res.json();
-      setEmergencyTelemetry(data);
-      setEmergencyModalOpen(true);
-    } catch {
-      setEmergencyTelemetry({
-        token: `EMG-${Math.floor(100000 + Math.random() * 900000)}`,
-        ambulance_id: "AV-AMB-09",
-        unit_assigned: "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)",
-        latitude: lat,
-        longitude: lon,
-        eta_mins: 5,
-      });
-      setEmergencyModalOpen(true);
-    } finally {
-      setIsEmergencyLoading(false);
-    }
+  function handleTriggerEmergency() {
+    setEmergencyTelemetry(null);
+    setEmergencyModalOpen(true);
   }
 
   return (
@@ -87,7 +46,10 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <Link href={isDoctorRoute ? "/doctor" : "/"} className="group flex items-center gap-3">
+          <Link
+            href={isHospitalRoute ? "/hospital" : "/"}
+            className="group flex items-center gap-3"
+          >
             <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white shadow-md shadow-blue-500/25 transition-transform duration-300 group-hover:scale-105">
               <svg
                 className="h-5 w-5"
@@ -117,7 +79,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
                   MediBridge
                 </span>
                 <span className="rounded-md bg-gradient-to-r from-blue-600 to-indigo-600 px-1.5 py-0.5 text-xs font-black tracking-wider text-white shadow-xs">
-                  {isDoctorRoute ? "CLINICIAN" : "AI"}
+                  {isHospitalRoute ? "HOSPITAL OS" : "AI"}
                 </span>
               </div>
               <span
@@ -125,19 +87,19 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
                   isDark ? "text-slate-400" : "text-slate-500"
                 }`}
               >
-                {isDoctorRoute
-                  ? "Authorized Clinical Triage Environment"
+                {isHospitalRoute
+                  ? "Multi-Department Emergency & Clinical Environment"
                   : t("navbar_brand_subtitle")}
               </span>
             </div>
           </Link>
 
-          {isDoctorRoute ? (
-            /* DOCTOR-ONLY RESTRICTED NAVIGATION */
+          {isHospitalRoute ? (
+            /* HOSPITAL & CLINICIAN RESTRICTED NAVIGATION */
             <nav className="flex items-center gap-2.5 sm:gap-3">
               <div className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-3 py-1.5 text-xs font-bold text-emerald-300">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Clinician Active</span>
+                <span>Hospital Staff Active</span>
               </div>
 
               {/* Language Switcher */}
@@ -149,9 +111,15 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
                   className="bg-transparent font-bold text-slate-200 outline-none cursor-pointer"
                   title="Select Language"
                 >
-                  <option value="en" className="bg-slate-900 text-white">EN</option>
-                  <option value="hi" className="bg-slate-900 text-white">हिन्दी</option>
-                  <option value="te" className="bg-slate-900 text-white">తెలుగు</option>
+                  <option value="en" className="bg-slate-900 text-white">
+                    EN
+                  </option>
+                  <option value="hi" className="bg-slate-900 text-white">
+                    हिन्दी
+                  </option>
+                  <option value="te" className="bg-slate-900 text-white">
+                    తెలుగు
+                  </option>
                 </select>
               </div>
 
@@ -165,13 +133,12 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
           ) : (
             /* PATIENT STANDARD NAVIGATION */
             <nav className="flex items-center gap-1.5 sm:gap-2.5">
-              {/* Pulsing Roadside Accident SOS Button */}
+              {/* Bifurcated Roadside Accident SOS Button */}
               <button
                 type="button"
                 onClick={handleTriggerEmergency}
-                disabled={isEmergencyLoading}
                 className="relative inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 px-3 py-2 text-xs font-black text-white shadow-md shadow-red-500/30 transition-all duration-200 hover:scale-105 active:scale-95 animate-pulse"
-                title="Roadside Accident Autonomous Ambulance Dispatch"
+                title="Emergency Response Triage"
               >
                 <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
                 <span className="whitespace-nowrap">{t("navbar_emergency_sos")}</span>
@@ -198,8 +165,9 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
               >
                 {t("navbar_patient_dashboard")}
               </Link>
+
               <Link
-                href="/doctor"
+                href="/hospital"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 shadow-xs transition-all duration-200 hover:border-blue-200 hover:bg-blue-50/50 hover:text-blue-700"
               >
                 <svg
@@ -215,8 +183,9 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
                     d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
                   />
                 </svg>
-                <span>{t("navbar_doctor_portal")}</span>
+                <span>{t("navbar_hospital_portal")}</span>
               </Link>
+
               <Link
                 href="/appointment"
                 className="relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-3.5 py-2 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-500/35 active:scale-95"
@@ -228,7 +197,7 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
         </div>
       </header>
 
-      {/* Emergency Modal */}
+      {/* Bifurcated Emergency Modal */}
       <EmergencyModal
         isOpen={emergencyModalOpen}
         onClose={() => setEmergencyModalOpen(false)}
@@ -237,4 +206,3 @@ export default function Navbar({ theme = "light" }: NavbarProps) {
     </>
   );
 }
-
