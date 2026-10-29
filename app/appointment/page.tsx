@@ -152,27 +152,35 @@ export default function AppointmentPage() {
     }
   }
 
-  // LOCAL CLIENT DATE GUARD: Calculate current local date in YYYY-MM-DD format (accounting for local timezone)
-  const getTodayDateString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-  const minSelectableDate = getTodayDateString();
-  const todayStr = minSelectableDate;
-  const today = minSelectableDate;
+  // Hydration & SSR Safe Date Guard
+  const [minDate, setMinDate] = useState<string>("");
 
   // Scheduling Fields
   const [department, setDepartment] = useState("General Medicine");
   const [doctor, setDoctor] = useState(departmentDoctors["General Medicine"][0]);
-  const [date, setDate] = useState(minSelectableDate);
+  const [date, setDate] = useState<string>("");
   const [time, setTime] = useState(timeSlots[0]);
 
   // Hourly Slot Capacity State (Max 8 patients per 1-hour slot)
   const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
   const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    // Runs safely on the client
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const formatted = `${yyyy}-${mm}-${dd}`;
+    setMinDate(formatted);
+
+    // If no date or past date is selected, set it to today
+    setDate((prev) => (!prev || prev < formatted ? formatted : prev));
+  }, []);
+
+  const minSelectableDate = minDate;
+  const todayStr = minDate;
+  const today = minDate;
 
   useEffect(() => {
     if (!date) return;
@@ -314,7 +322,7 @@ export default function AppointmentPage() {
       setErrorMsg("Please select an appointment date.");
       return;
     }
-    if (date < minSelectableDate) {
+    if (minDate && date < minDate) {
       setErrorMsg(
         t("date_guard_error") ||
           "Appointments cannot be booked for past dates. Please select today or a future date."
@@ -687,16 +695,16 @@ export default function AppointmentPage() {
                   id="apt-date"
                   type="date"
                   required
-                  min={minSelectableDate}
+                  min={minDate || undefined}
                   value={date}
                   onChange={(e) => {
                     const chosen = e.target.value;
-                    if (!chosen || chosen < minSelectableDate) {
+                    if (minDate && (!chosen || chosen < minDate)) {
                       setErrorMsg(
                         t("date_guard_error") ||
                           "Appointments cannot be booked for past dates. Please select today or a future date."
                       );
-                      setDate(minSelectableDate);
+                      setDate(minDate);
                     } else {
                       setErrorMsg("");
                       setDate(chosen);
