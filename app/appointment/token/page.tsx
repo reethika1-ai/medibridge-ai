@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -15,6 +15,33 @@ function TokenScreenContent() {
   const time = searchParams.get("time") || "Scheduled Time";
 
   const [copied, setCopied] = useState(false);
+  const [queueInfo, setQueueInfo] = useState<{
+    queue_position: number;
+    slot_total: number;
+    consultation_eta: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    async function loadQueueInfo() {
+      try {
+        const res = await fetch(`/api/appointment/slot-availability?token=${encodeURIComponent(token)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.ok) {
+            setQueueInfo({
+              queue_position: json.queue_position || 1,
+              slot_total: json.slot_total || 1,
+              consultation_eta: json.consultation_eta || time,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load queue info:", err);
+      }
+    }
+    loadQueueInfo();
+  }, [token, time]);
 
   function copyToken() {
     navigator.clipboard.writeText(token);
@@ -85,6 +112,28 @@ function TokenScreenContent() {
                 >
                   {copied ? "✓ Copied!" : "📋 Click to Copy"}
                 </span>
+              </div>
+
+              {/* Slot Queue Position & Consultation ETA */}
+              <div className="mt-5 rounded-2xl bg-white/90 p-3.5 border border-blue-200/80 shadow-xs text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🎟️</span>
+                    <span>Queue Spot</span>
+                  </span>
+                  <span className="rounded-full bg-blue-600 text-white px-3 py-0.5 text-xs font-black shadow-xs">
+                    Queue Spot: #{queueInfo?.queue_position || 1} of 8 in this slot
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center justify-between border-t border-blue-100 pt-2 text-xs">
+                  <span className="text-slate-600 font-semibold flex items-center gap-1">
+                    <span>⏱️</span>
+                    <span>Estimated Consultation Time:</span>
+                  </span>
+                  <span className="font-mono font-black text-blue-700 text-sm">
+                    {queueInfo?.consultation_eta || time}
+                  </span>
+                </div>
               </div>
 
               {/* Consultation Details Grid */}

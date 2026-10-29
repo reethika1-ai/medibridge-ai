@@ -43,6 +43,12 @@ function PatientDashboardContent() {
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
   const [emergencyModalOpen, setEmergencyModalOpen] = useState<boolean>(false);
   const [docVaultTab, setDocVaultTab] = useState<"rx" | "report">("rx");
+  const [queueInfo, setQueueInfo] = useState<{
+    queue_position: number;
+    slot_total: number;
+    max_capacity: number;
+    consultation_eta: string;
+  } | null>(null);
 
   useEffect(() => {
     const savedToken =
@@ -74,6 +80,26 @@ function PatientDashboardContent() {
 
       if (typeof window !== "undefined") {
         localStorage.setItem("medibridge_last_token", tok.trim());
+      }
+
+      // Fetch slot queue spot and calculated consultation ETA
+      try {
+        const slotRes = await fetch(
+          `/api/appointment/slot-availability?token=${encodeURIComponent(tok.trim())}`
+        );
+        if (slotRes.ok) {
+          const slotJson = await slotRes.json();
+          if (slotJson.ok) {
+            setQueueInfo({
+              queue_position: slotJson.queue_position || 1,
+              slot_total: slotJson.slot_total || 1,
+              max_capacity: slotJson.max_capacity || 8,
+              consultation_eta: slotJson.consultation_eta || "Scheduled Slot Time",
+            });
+          }
+        }
+      } catch (slotErr) {
+        console.warn("Could not fetch slot queue position:", slotErr);
       }
     } catch (err: any) {
       console.error("Error fetching patient appointment:", err);
@@ -242,6 +268,8 @@ function PatientDashboardContent() {
                         ? t("visit_completed")
                         : currentStatus === "In-Consultation"
                         ? t("inConsultation")
+                        : queueInfo
+                        ? `Spot #${queueInfo.queue_position} of 8 (~${queueInfo.consultation_eta} ETA)`
                         : "2 Patients Ahead (~10 min ETA)"}
                     </p>
                     <p className="text-[11px] text-teal-800 font-medium">
@@ -441,6 +469,28 @@ function PatientDashboardContent() {
                         <span className="w-0.5 h-6 bg-white" />
                         <span className="w-1 h-6 bg-white" />
                         <span className="w-0.5 h-6 bg-white" />
+                      </div>
+                    </div>
+
+                    {/* Hourly Slot Queue Spot & Consultation ETA Display */}
+                    <div className="mt-4 pt-3 border-t border-white/20 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-teal-100 flex items-center gap-1.5">
+                          <span>🎟️</span>
+                          <span>{t("queue_spot") || "Queue Spot"}:</span>
+                        </span>
+                        <span className="rounded-full bg-amber-300 px-3 py-0.5 text-xs font-black text-slate-900 shadow-xs">
+                          #{queueInfo?.queue_position || 1} of 8 {t("in_this_slot") || "in this slot"}
+                        </span>
+                      </div>
+                      <div className="mt-2.5 flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-teal-100 flex items-center gap-1.5">
+                          <span>⏱️</span>
+                          <span>{t("consultation_eta") || "Estimated Consultation Time"}:</span>
+                        </span>
+                        <span className="font-mono font-black text-white text-sm">
+                          {queueInfo?.consultation_eta || "Scheduled Slot Time"}
+                        </span>
                       </div>
                     </div>
                   </div>

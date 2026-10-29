@@ -225,6 +225,12 @@ export const translations = {
     case_handled_badge: "✅ Emergency Case Handled",
     accept_case_btn: "🚨 Accept Case & Silence Siren",
     resolve_case_btn: "🩺 Resolve & Complete Case",
+    queue_spot: "Queue Spot",
+    in_this_slot: "in this slot",
+    consultation_eta: "Estimated Consultation Time",
+    slot_full: "Slot Full (8/8) - Locked",
+    slot_capacity_error: "Selected time slot is at maximum capacity (8/8 patients). Please choose another slot.",
+    date_guard_error: "Please select today or a future date for your appointment.",
   },
   hi: {
     navbar_brand_subtitle: "क्लिनिकल ट्रायज और हेल्थकेयर ऑपरेटिंग सिस्टम",
@@ -449,6 +455,12 @@ export const translations = {
     case_handled_badge: "✅ आपातकालीन मामला हल हो गया",
     accept_case_btn: "🚨 केस स्वीकार करें और सायरन बंद करें",
     resolve_case_btn: "🩺 केस का समाधान करें और पूरा करें",
+    queue_spot: "कतार स्थान",
+    in_this_slot: "इस स्लॉट में",
+    consultation_eta: "अनुमानित परामर्श समय",
+    slot_full: "स्लॉट भरा हुआ (8/8) - बंद",
+    slot_capacity_error: "चयनित समय स्लॉट अधिकतम क्षमता (8/8 मरीज़) पर है। कृपया दूसरा स्लॉट चुनें।",
+    date_guard_error: "कृपया अपने अपॉइंटमेंट के लिए आज या भविष्य की तारीख चुनें।",
   },
   te: {
     navbar_brand_subtitle: "క్లినికల్ ట్రయాజ్ & హెల్త్‌కేర్ ఆపరేటింగ్ సిస్టమ్",
@@ -673,6 +685,12 @@ export const translations = {
     case_handled_badge: "✅ అత్యవసర కేసు పరిష్కరించబడింది",
     accept_case_btn: "🚨 కేసును స్వీకరించి సైరన్ను ఆపండి",
     resolve_case_btn: "🩺 కేసును పరిష్కరించి పూర్తి చేయండి",
+    queue_spot: "క్యూ స్థానం",
+    in_this_slot: "ఈ స్లాట్‌లో",
+    consultation_eta: "అంచనా వేసిన సంప్రదింపు సమయం",
+    slot_full: "స్లాట్ నిండింది (8/8) - లాక్ చేయబడింది",
+    slot_capacity_error: "ఎంచుకున్న సమయ స్లాట్ గరిష్ట పరిమితికి (8/8 రోగులు) చేరుకుంది. దయచేసి వేరే స్లాట్ ఎంచుకోండి.",
+    date_guard_error: "దయచేసి మీ అపాయింట్‌మెంట్ కోసం ఈరోజు లేదా భవిష్యత్తు తేదీని ఎంచుకోండి.",
   },
 } as const;
 

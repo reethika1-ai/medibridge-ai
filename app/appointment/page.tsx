@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -152,11 +152,52 @@ export default function AppointmentPage() {
     }
   }
 
+  // Dynamic Date Guard (Today and Future Dates Only)
+  const today = new Date().toISOString().split("T")[0];
+
   // Scheduling Fields
   const [department, setDepartment] = useState("General Medicine");
   const [doctor, setDoctor] = useState(departmentDoctors["General Medicine"][0]);
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(today);
   const [time, setTime] = useState(timeSlots[0]);
+
+  // Hourly Slot Capacity State (Max 8 patients per 1-hour slot)
+  const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
+  useEffect(() => {
+    if (!date) return;
+    let isMounted = true;
+    async function fetchSlotAvailability() {
+      setLoadingSlots(true);
+      try {
+        const res = await fetch(`/api/appointment/slot-availability?date=${encodeURIComponent(date)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.slot_counts) {
+            setSlotCounts(json.slot_counts);
+            // If currently selected slot is full (8/8), auto-advance to next available slot
+            const currentCount = json.slot_counts[time] || 0;
+            if (currentCount >= 8) {
+              const nextAvailable = timeSlots.find((ts) => (json.slot_counts[ts] || 0) < 8);
+              if (nextAvailable) {
+                setTime(nextAvailable);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch slot availability:", err);
+      } finally {
+        if (isMounted) setLoadingSlots(false);
+      }
+    }
+
+    fetchSlotAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [date]);
 
   // Dual File Upload States
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
@@ -262,6 +303,18 @@ export default function AppointmentPage() {
     }
     if (!date) {
       setErrorMsg("Please select an appointment date.");
+      return;
+    }
+    if (date < today) {
+      setErrorMsg(t("date_guard_error") || "Please select today or a future date for your appointment.");
+      return;
+    }
+    const currentSlotCount = slotCounts[time] || 0;
+    if (currentSlotCount >= 8) {
+      setErrorMsg(
+        t("slot_capacity_error") ||
+          "Selected time slot is at maximum capacity (8/8 patients). Please choose another slot."
+      );
       return;
     }
     if (!symptoms.trim()) {
@@ -604,44 +657,109 @@ export default function AppointmentPage() {
               </div>
             </div>
 
-            {/* Date and Time Slot Grid */}
+            {/* Date and Time Slot Grid with Dynamic Guard & Capacity Limiter */}
             <div className="grid gap-6 sm:grid-cols-2">
               <div>
-                <label
-                  htmlFor="apt-date"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-700"
-                >
-                  {t("appointment_date")} <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="apt-date"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700"
+                  >
+                    {t("appointment_date")} <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-100">
+                    Today & Future Only
+                  </span>
+                </div>
                 <input
                   id="apt-date"
                   type="date"
                   required
+                  min={today}
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    if (chosen < today) {
+                      setErrorMsg(
+                        t("date_guard_error") ||
+                          "Please select today or a future date for your appointment."
+                      );
+                      setDate(today);
+                    } else {
+                      setErrorMsg("");
+                      setDate(chosen);
+                    }
+                  }}
                   className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label
-                  htmlFor="apt-time"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-700"
-                >
-                  {t("appointment_time")} <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="apt-time"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700"
+                  >
+                    {t("appointment_time")} <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
+                    {loadingSlots ? "Checking capacity..." : "Max 8 Patients / Slot"}
+                  </span>
+                </div>
                 <select
                   id="apt-time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
                 >
-                  {timeSlots.map((ts) => (
-                    <option key={ts} value={ts}>
-                      {ts}
-                    </option>
-                  ))}
+                  {timeSlots.map((ts) => {
+                    const count = slotCounts[ts] || 0;
+                    const isFull = count >= 8;
+                    return (
+                      <option key={ts} value={ts} disabled={isFull}>
+                        {ts} {isFull ? `(${t("slot_full") || "8/8 Full - Locked"})` : `(${count}/8 ${t("in_this_slot") || "booked"})`}
+                      </option>
+                    );
+                  })}
                 </select>
+
+                {/* Quick Hourly Slot Capacity Chips */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  {timeSlots.map((ts) => {
+                    const count = slotCounts[ts] || 0;
+                    const isFull = count >= 8;
+                    const isSelected = time === ts;
+                    return (
+                      <button
+                        key={ts}
+                        type="button"
+                        disabled={isFull}
+                        onClick={() => setTime(ts)}
+                        title={isFull ? "Slot at maximum capacity (8/8)" : `Click to select ${ts}`}
+                        className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[11px] font-bold transition-all ${
+                          isFull
+                            ? "bg-slate-100 text-slate-400 line-through cursor-not-allowed border border-slate-200 opacity-60"
+                            : isSelected
+                            ? "bg-[#00A896] text-white shadow-xs ring-2 ring-teal-400/40"
+                            : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200/60"
+                        }`}
+                      >
+                        <span>{ts}</span>
+                        <span
+                          className={`rounded-full px-1.5 py-0.2 text-[9px] font-black ${
+                            isFull
+                              ? "bg-rose-100 text-rose-700"
+                              : isSelected
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {count}/8
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { calculateConsultationEta } from "@/app/api/appointment/slot-availability/route";
 
 export async function GET(req: Request) {
   try {
@@ -69,11 +70,44 @@ export async function GET(req: Request) {
       };
     });
 
+    let singleAppointment = formattedData[0] || null;
+    if (token && singleAppointment) {
+      try {
+        const appointmentDateStr = singleAppointment.appointment_date || "";
+        const parts = appointmentDateStr.split("@").map((s: string) => s.trim());
+        const aptDate = parts[0] || "";
+        const aptTime = parts[1] || "";
+
+        if (aptDate && aptTime) {
+          const { data: slotApts } = await supabase
+            .from("appointments")
+            .select("token, created_at, status")
+            .like("appointment_date", `${aptDate} @ ${aptTime}%`)
+            .order("created_at", { ascending: true });
+
+          const activeApts = (slotApts || []).filter((a) => a.status !== "Cancelled");
+          const index = activeApts.findIndex((a) => a.token === token);
+          const position = index >= 0 ? index + 1 : 1;
+          const slotTotal = Math.max(activeApts.length, position);
+
+          singleAppointment = {
+            ...singleAppointment,
+            queue_position: position,
+            slot_total: slotTotal,
+            max_capacity: 8,
+            consultation_eta: calculateConsultationEta(aptTime, position),
+          };
+        }
+      } catch (calcErr) {
+        console.warn("Could not calculate queue position in /api/appointments:", calcErr);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       data: formattedData,
       appointments: formattedData,
-      appointment: formattedData[0] || null,
+      appointment: singleAppointment,
     });
   } catch (error) {
     return NextResponse.json(
