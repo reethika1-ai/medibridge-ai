@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useLanguage } from "@/context/LanguageContext";
 
 export type ExtractedMedication = {
   name: string;
@@ -144,6 +145,7 @@ export default function DoctorQueueClient({
   initialAppointments: AppointmentItem[];
 }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [appointments, setAppointments] = useState<AppointmentItem[]>(initialAppointments);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentItem | null>(null);
   const [updatingToken, setUpdatingToken] = useState<string | null>(null);
@@ -162,7 +164,12 @@ export default function DoctorQueueClient({
   useEffect(() => {
     let hasNewRedAlert = false;
     appointments.forEach((apt) => {
-      if (isRedAlert(apt)) {
+      const isUnaccepted =
+        isRedAlert(apt) &&
+        apt.status !== "In-Progress" &&
+        apt.status !== "Completed" &&
+        apt.status !== "Handled";
+      if (isUnaccepted) {
         if (!seenRedAlertsRef.current.has(apt.token)) {
           seenRedAlertsRef.current.add(apt.token);
           hasNewRedAlert = true;
@@ -246,13 +253,28 @@ export default function DoctorQueueClient({
     return true;
   });
 
-  // Sort to pin CRITICAL_RED_ALERT at Position #0
+  // Priority hierarchy:
+  // 1. Unaccepted Red Alerts (Priority #0)
+  // 2. In-Progress / Handled Red Alerts
+  // 3. Urgent appointments (Waiting / In-Consultation)
+  // 4. Standard appointments (Waiting / In-Consultation)
+  // 5. Completed appointments
   const sortedFilteredAppointments = [...filteredAppointments].sort((a, b) => {
-    const aRed = isRedAlert(a);
-    const bRed = isRedAlert(b);
-    if (aRed && !bRed) return -1;
-    if (!aRed && bRed) return 1;
-    return 0;
+    const getScore = (apt: AppointmentItem) => {
+      const red = isRedAlert(apt);
+      const isCompleted = apt.status === "Completed";
+      const isInProgress = apt.status === "In-Progress" || apt.status === "Handled";
+
+      if (red && !isCompleted && !isInProgress) return 0; // Unaccepted Red Alert: highest priority (#0)
+      if (red && isInProgress) return 1;                  // Handled / In-Progress Red Alert
+      if (apt.urgent && !isCompleted) return 2;           // Urgent waiting
+      if (!isCompleted) return 3;                         // Standard waiting
+      return 4;                                           // Completed
+    };
+
+    const diff = getScore(a) - getScore(b);
+    if (diff !== 0) return diff;
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
   });
 
   const redAlertCount = appointments.filter((a) => isRedAlert(a)).length;
@@ -446,22 +468,64 @@ export default function DoctorQueueClient({
                       {redAlert && (
                         <tr className="border-b border-red-500/40 bg-gradient-to-r from-red-950 via-rose-900 to-red-950 text-white font-black text-xs uppercase tracking-wider animate-pulse">
                           <td colSpan={6} className="px-6 py-2 border-l-4 border-red-500">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
                                 <span className="flex h-2.5 w-2.5 rounded-full bg-red-400 animate-ping" />
                                 <span className="text-red-100">
-                                  {apt.token?.startsWith("EMG-GATE") ||
-                                  apt.parsed_summary?.mode === "SELF_ARRIVAL"
+                                  {apt.status === "In-Progress" || apt.status === "Handled"
+                                    ? "✅ PRIORITY RESTORED: EMERGENCY CASE HANDLED — IN-TRANSIT / ACTIVE RESUSCITATION"
+                                    : apt.status === "Completed"
+                                    ? "✓ EMERGENCY CASE RESOLVED & ARCHIVED"
+                                    : apt.token?.startsWith("EMG-GATE") ||
+                                      apt.parsed_summary?.mode === "SELF_ARRIVAL"
                                     ? "🚨 PRIORITY #0: HOSPITAL GATE 1 INCOMING CASUALTY — RAPID ER MOBILIZATION ALERT"
                                     : "🚨 PRIORITY #0: AUTONOMOUS AMBULANCE DISPATCHED — CRITICAL ROAD TRAUMA ALERT"}
                                 </span>
                               </div>
-                              <span className="rounded-md bg-black/60 px-2.5 py-0.5 text-[10px] font-mono text-cyan-300 border border-red-400/40">
-                                {apt.token?.startsWith("EMG-GATE") ||
-                                apt.parsed_summary?.mode === "SELF_ARRIVAL"
-                                  ? "GATE 1 ENTRANCE STANDBY"
-                                  : "UNIT #MED-09 EN ROUTE"}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {apt.status !== "In-Progress" &&
+                                apt.status !== "Handled" &&
+                                apt.status !== "Completed" ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateStatus(apt.token, "In-Progress");
+                                    }}
+                                    disabled={updatingToken === apt.token}
+                                    className="rounded-full bg-red-600 hover:bg-red-500 px-3.5 py-1 text-[11px] font-black text-white shadow-md ring-1 ring-white/40 transition active:scale-95 disabled:opacity-50"
+                                  >
+                                    {t("accept_case_btn")}
+                                  </button>
+                                ) : apt.status === "In-Progress" || apt.status === "Handled" ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="rounded-full bg-emerald-900/90 border border-emerald-400 px-2.5 py-0.5 text-[10px] font-black text-emerald-300">
+                                      {t("case_handled_badge")}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleUpdateStatus(apt.token, "Completed");
+                                      }}
+                                      disabled={updatingToken === apt.token}
+                                      className="rounded-full bg-teal-600 hover:bg-teal-500 px-3 py-1 text-[11px] font-black text-white shadow-sm transition active:scale-95 disabled:opacity-50"
+                                    >
+                                      {t("resolve_case_btn")}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="rounded-full bg-emerald-950 border border-emerald-600/60 px-2.5 py-0.5 text-[10px] font-black text-emerald-400">
+                                    ✓ Case Resolved
+                                  </span>
+                                )}
+                                <span className="rounded-md bg-black/60 px-2.5 py-0.5 text-[10px] font-mono text-cyan-300 border border-red-400/40">
+                                  {apt.token?.startsWith("EMG-GATE") ||
+                                  apt.parsed_summary?.mode === "SELF_ARRIVAL"
+                                    ? "GATE 1 ENTRANCE STANDBY"
+                                    : "UNIT #MED-09 EN ROUTE"}
+                                </span>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -505,10 +569,21 @@ export default function DoctorQueueClient({
 
                         <td className="px-6 py-4">
                           {redAlert ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white shadow-md shadow-red-500/40 animate-pulse border border-red-400">
-                              <span className="h-2 w-2 rounded-full bg-white animate-ping" />
-                              CRITICAL RED ALERT
-                            </span>
+                            apt.status === "In-Progress" || apt.status === "Handled" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950 border border-emerald-500/60 px-3 py-1 text-xs font-black text-emerald-300">
+                                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                                {t("case_handled_badge")}
+                              </span>
+                            ) : apt.status === "Completed" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 border border-slate-700 px-3 py-1 text-xs font-bold text-slate-300">
+                                ✓ Resolved
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white shadow-md shadow-red-500/40 animate-pulse border border-red-400">
+                                <span className="h-2 w-2 rounded-full bg-white animate-ping" />
+                                CRITICAL RED ALERT
+                              </span>
+                            )
                           ) : apt.urgent ? (
                             <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 px-3 py-1 text-xs font-black text-rose-300 border border-rose-500/40 animate-pulse">
                               <span className="h-2 w-2 rounded-full bg-rose-400" />
@@ -692,6 +767,43 @@ export default function DoctorQueueClient({
                           : "Bystander / Roadside Alert")}
                     </span>
                     <span className="font-semibold text-emerald-400">✓ Resuscitation & Crash-Cart Ready</span>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-red-500/30 flex items-center justify-between">
+                    <div>
+                      {selectedAppointment.status === "In-Progress" || selectedAppointment.status === "Handled" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-950 border border-emerald-500 px-3 py-1 text-xs font-black text-emerald-300">
+                          {t("case_handled_badge")}
+                        </span>
+                      ) : selectedAppointment.status === "Completed" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 border border-slate-600 px-3 py-1 text-xs font-bold text-slate-300">
+                          ✓ Case Resolved
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-900/60 border border-red-500 px-3 py-1 text-xs font-black text-red-200 animate-pulse">
+                          🚨 Unaccepted Emergency
+                        </span>
+                      )}
+                    </div>
+                    {selectedAppointment.status !== "In-Progress" &&
+                    selectedAppointment.status !== "Handled" &&
+                    selectedAppointment.status !== "Completed" ? (
+                      <button
+                        onClick={() => handleUpdateStatus(selectedAppointment.token, "In-Progress")}
+                        disabled={updatingToken === selectedAppointment.token}
+                        className="rounded-xl bg-red-600 hover:bg-red-500 text-white font-black px-4 py-2 text-xs shadow-md shadow-red-600/40 ring-2 ring-red-400 transition active:scale-95 disabled:opacity-50"
+                      >
+                        {t("accept_case_btn")}
+                      </button>
+                    ) : selectedAppointment.status === "In-Progress" || selectedAppointment.status === "Handled" ? (
+                      <button
+                        onClick={() => handleUpdateStatus(selectedAppointment.token, "Completed")}
+                        disabled={updatingToken === selectedAppointment.token}
+                        className="rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black px-4 py-2 text-xs shadow-md transition active:scale-95 disabled:opacity-50"
+                      >
+                        {t("resolve_case_btn")}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               )}

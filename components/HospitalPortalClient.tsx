@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import DoctorQueueClient, { AppointmentItem, isRedAlert } from "@/components/DoctorQueueClient";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface HospitalPortalClientProps {
   initialAppointments: AppointmentItem[];
@@ -47,6 +48,7 @@ export default function HospitalPortalClient({
 }: HospitalPortalClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useLanguage();
   const initialTab = (searchParams.get("tab") as HospitalTab) || "doctor";
 
   const [activeTab, setActiveTab] = useState<HospitalTab>(
@@ -54,7 +56,6 @@ export default function HospitalPortalClient({
   );
   const [appointments, setAppointments] = useState<AppointmentItem[]>(initialAppointments);
   const [updatingToken, setUpdatingToken] = useState<string | null>(null);
-  const [sirenMuted, setSirenMuted] = useState<boolean>(false);
 
   // Track acknowledged red alerts to fire siren on new alerts
   const seenEmergenciesRef = useRef<Set<string>>(
@@ -79,6 +80,23 @@ export default function HospitalPortalClient({
     router.replace(`/hospital?tab=${tab}`);
   }
 
+  // Active emergencies that require immediate acceptance / dispatch
+  const unacceptedEmergencies = appointments.filter(
+    (apt) =>
+      isRedAlert(apt) &&
+      apt.status !== "In-Progress" &&
+      apt.status !== "Completed" &&
+      apt.status !== "Handled"
+  );
+  const hasUnacceptedEmergency = unacceptedEmergencies.length > 0;
+
+  // Active emergencies currently being handled
+  const inProgressEmergencies = appointments.filter(
+    (apt) =>
+      isRedAlert(apt) &&
+      (apt.status === "In-Progress" || apt.status === "Handled")
+  );
+
   // Real-time synchronization: poll /api/appointments every 3s to populate Tabs 1, 2, and 3 instantly
   useEffect(() => {
     let isMounted = true;
@@ -94,7 +112,12 @@ export default function HospitalPortalClient({
           let hasNewEmergency = false;
 
           items.forEach((apt) => {
-            if (isRedAlert(apt)) {
+            const isUnaccepted =
+              isRedAlert(apt) &&
+              apt.status !== "In-Progress" &&
+              apt.status !== "Completed" &&
+              apt.status !== "Handled";
+            if (isUnaccepted) {
               if (!seenEmergenciesRef.current.has(apt.token)) {
                 seenEmergenciesRef.current.add(apt.token);
                 hasNewEmergency = true;
@@ -103,7 +126,6 @@ export default function HospitalPortalClient({
           });
 
           if (hasNewEmergency) {
-            setSirenMuted(false);
             playEmergencySiren();
           }
 
@@ -124,20 +146,20 @@ export default function HospitalPortalClient({
   // Track total red alerts across queue
   const redAlertTotal = appointments.filter((a) => isRedAlert(a)).length;
 
-  // Persistent two-tone ER siren loop when Red Alerts exist and alarm is unmuted
+  // Persistent two-tone ER siren loop ONLY while unaccepted Red Alerts exist
   useEffect(() => {
-    if (redAlertTotal === 0 || sirenMuted) return;
+    if (!hasUnacceptedEmergency) return;
 
     // Trigger cycle immediately
     playEmergencySiren();
 
-    // Replay every 3.5 seconds persistently while Red Alerts are active
+    // Replay every 3.5 seconds persistently while unaccepted Red Alerts are active
     const sirenTimer = setInterval(() => {
       playEmergencySiren();
     }, 3500);
 
     return () => clearInterval(sirenTimer);
-  }, [redAlertTotal, sirenMuted]);
+  }, [hasUnacceptedEmergency]);
 
   // Filter for Ambulance Fleet
   const ambulanceAppointments = appointments.filter((apt) => {
@@ -276,46 +298,50 @@ export default function HospitalPortalClient({
           </button>
         </div>
 
-        {/* Global Trauma Alert Indicator & Persistent Siren Controls */}
+        {/* Global Trauma Alert Indicator & Siren / Case Controls */}
         <div className="flex items-center gap-3 px-3">
-          {redAlertTotal > 0 && (
-            <div className="inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3.5 py-1.5 text-xs font-black text-red-700 animate-pulse">
-              <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
-              <span>{redAlertTotal} RED ALERT CASUALTIES</span>
-            </div>
-          )}
-
-          {redAlertTotal > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (!sirenMuted) {
-                  setSirenMuted(true);
-                } else {
-                  setSirenMuted(false);
-                  playEmergencySiren();
+          {hasUnacceptedEmergency ? (
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-red-300 bg-red-50 px-3.5 py-1.5 text-xs font-black text-red-700 animate-pulse">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                <span>{unacceptedEmergencies.length} UNACCEPTED RED ALERT</span>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateAppointmentStatus(unacceptedEmergencies[0].token, "In-Progress")
                 }
-              }}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black shadow-md transition-all active:scale-95 ${
-                !sirenMuted
-                  ? "bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-red-600/40"
-                  : "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200"
-              }`}
-              title={!sirenMuted ? "Click to Silence ER Siren" : "Click to Unmute ER Siren"}
-            >
-              <span>{!sirenMuted ? "🚨" : "🔇"}</span>
-              <span>{!sirenMuted ? "SIREN SOUNDING (Silence)" : "Siren Muted (Unmute)"}</span>
-            </button>
+                disabled={updatingToken === unacceptedEmergencies[0].token}
+                className="inline-flex items-center gap-2 rounded-full bg-red-600 hover:bg-red-700 px-4 py-2 text-xs font-black text-white shadow-md shadow-red-600/40 ring-2 ring-red-400 animate-pulse transition-all active:scale-95 disabled:opacity-50"
+                title="Accept Emergency Case & Silence Siren"
+              >
+                <span>🚨</span>
+                <span>{t("accept_case_btn")}</span>
+              </button>
+            </div>
+          ) : inProgressEmergencies.length > 0 ? (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-300 px-3.5 py-1.5 text-xs font-black text-emerald-700">
+                {t("case_handled_badge")}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdateAppointmentStatus(inProgressEmergencies[0].token, "Completed")
+                }
+                disabled={updatingToken === inProgressEmergencies[0].token}
+                className="inline-flex items-center gap-2 rounded-full bg-teal-600 hover:bg-teal-700 px-4 py-2 text-xs font-black text-white shadow-md shadow-teal-600/30 transition-all active:scale-95 disabled:opacity-50"
+                title="Resolve & Complete Emergency Case"
+              >
+                <span>🩺</span>
+                <span>{t("resolve_case_btn")}</span>
+              </button>
+            </div>
           ) : (
-            <button
-              type="button"
-              onClick={playEmergencySiren}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition active:scale-95 shadow-xs"
-              title="Test ER Hospital Siren (960 Hz <-> 770 Hz)"
-            >
-              <span className="animate-bounce">🔊</span>
-              <span>Test ER Siren</span>
-            </button>
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50/70 px-3.5 py-1.5 text-xs font-bold text-teal-800">
+              <span className="h-2 w-2 rounded-full bg-teal-500" />
+              <span>Trauma Standby Active</span>
+            </div>
           )}
         </div>
       </div>

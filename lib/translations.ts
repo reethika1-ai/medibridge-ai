@@ -220,6 +220,11 @@ export const translations = {
     metric_delay: "Paperwork Delay",
     metric_delay_val: "0 Mins",
     metric_delay_sub: "Instant AI Ingestion",
+    btn_voice_intake: "Voice Symptom Intake",
+    btn_roadside_sos: "Roadside Emergency SOS",
+    case_handled_badge: "✅ Emergency Case Handled",
+    accept_case_btn: "🚨 Accept Case & Silence Siren",
+    resolve_case_btn: "🩺 Resolve & Complete Case",
   },
   hi: {
     navbar_brand_subtitle: "क्लिनिकल ट्रायज और हेल्थकेयर ऑपरेटिंग सिस्टम",
@@ -439,6 +444,11 @@ export const translations = {
     metric_delay: "कागजी देरी",
     metric_delay_val: "0 मिनट",
     metric_delay_sub: "त्वरित एआई प्रसंस्करण",
+    btn_voice_intake: "आवाज़ से लक्षण बताएं",
+    btn_roadside_sos: "आपातकालीन रोड एक्सीडेंट SOS",
+    case_handled_badge: "✅ आपातकालीन मामला हल हो गया",
+    accept_case_btn: "🚨 केस स्वीकार करें और सायरन बंद करें",
+    resolve_case_btn: "🩺 केस का समाधान करें और पूरा करें",
   },
   te: {
     navbar_brand_subtitle: "క్లినికల్ ట్రయాజ్ & హెల్త్‌కేర్ ఆపరేటింగ్ సిస్టమ్",
@@ -658,6 +668,11 @@ export const translations = {
     metric_delay: "కాగితపు పని ఆలస్యం",
     metric_delay_val: "0 నిమిషాలు",
     metric_delay_sub: "తక్షణ AI ప్రాసెసింగ్",
+    btn_voice_intake: "వాయిస్ ద్వారా లక్షణాలు నమోదు చేయండి",
+    btn_roadside_sos: "అత్యవసర రోడ్డు ప్రమాదం SOS",
+    case_handled_badge: "✅ అత్యవసర కేసు పరిష్కరించబడింది",
+    accept_case_btn: "🚨 కేసును స్వీకరించి సైరన్ను ఆపండి",
+    resolve_case_btn: "🩺 కేసును పరిష్కరించి పూర్తి చేయండి",
   },
 } as const;
 
