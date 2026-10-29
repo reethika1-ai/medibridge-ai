@@ -152,13 +152,14 @@ export default function AppointmentPage() {
     }
   }
 
-  // Dynamic Date Guard (Today and Future Dates Only)
-  const today = new Date().toISOString().split("T")[0];
+  // Dynamic Date Guard (Today and Future Dates Only - Strict Enforcement)
+  const todayStr = new Date().toISOString().split("T")[0];
+  const today = todayStr;
 
   // Scheduling Fields
   const [department, setDepartment] = useState("General Medicine");
   const [doctor, setDoctor] = useState(departmentDoctors["General Medicine"][0]);
-  const [date, setDate] = useState(today);
+  const [date, setDate] = useState(todayStr);
   const [time, setTime] = useState(timeSlots[0]);
 
   // Hourly Slot Capacity State (Max 8 patients per 1-hour slot)
@@ -305,8 +306,11 @@ export default function AppointmentPage() {
       setErrorMsg("Please select an appointment date.");
       return;
     }
-    if (date < today) {
-      setErrorMsg(t("date_guard_error") || "Please select today or a future date for your appointment.");
+    if (date < todayStr) {
+      setErrorMsg(
+        t("date_guard_error") ||
+          "Appointments cannot be booked for past dates. Please select today or a future date."
+      );
       return;
     }
     const currentSlotCount = slotCounts[time] || 0;
@@ -675,16 +679,16 @@ export default function AppointmentPage() {
                   id="apt-date"
                   type="date"
                   required
-                  min={today}
+                  min={todayStr}
                   value={date}
                   onChange={(e) => {
                     const chosen = e.target.value;
-                    if (chosen < today) {
+                    if (!chosen || chosen < todayStr) {
                       setErrorMsg(
                         t("date_guard_error") ||
-                          "Please select today or a future date for your appointment."
+                          "Appointments cannot be booked for past dates. Please select today or a future date."
                       );
-                      setDate(today);
+                      setDate(todayStr);
                     } else {
                       setErrorMsg("");
                       setDate(chosen);
