@@ -152,14 +152,22 @@ export default function AppointmentPage() {
     }
   }
 
-  // Dynamic Date Guard (Today and Future Dates Only - Strict Enforcement)
-  const todayStr = new Date().toISOString().split("T")[0];
-  const today = todayStr;
+  // LOCAL CLIENT DATE GUARD: Calculate current local date in YYYY-MM-DD format (accounting for local timezone)
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+  const minSelectableDate = getTodayDateString();
+  const todayStr = minSelectableDate;
+  const today = minSelectableDate;
 
   // Scheduling Fields
   const [department, setDepartment] = useState("General Medicine");
   const [doctor, setDoctor] = useState(departmentDoctors["General Medicine"][0]);
-  const [date, setDate] = useState(todayStr);
+  const [date, setDate] = useState(minSelectableDate);
   const [time, setTime] = useState(timeSlots[0]);
 
   // Hourly Slot Capacity State (Max 8 patients per 1-hour slot)
@@ -306,7 +314,7 @@ export default function AppointmentPage() {
       setErrorMsg("Please select an appointment date.");
       return;
     }
-    if (date < todayStr) {
+    if (date < minSelectableDate) {
       setErrorMsg(
         t("date_guard_error") ||
           "Appointments cannot be booked for past dates. Please select today or a future date."
@@ -679,16 +687,16 @@ export default function AppointmentPage() {
                   id="apt-date"
                   type="date"
                   required
-                  min={todayStr}
+                  min={minSelectableDate}
                   value={date}
                   onChange={(e) => {
                     const chosen = e.target.value;
-                    if (!chosen || chosen < todayStr) {
+                    if (!chosen || chosen < minSelectableDate) {
                       setErrorMsg(
                         t("date_guard_error") ||
                           "Appointments cannot be booked for past dates. Please select today or a future date."
                       );
-                      setDate(todayStr);
+                      setDate(minSelectableDate);
                     } else {
                       setErrorMsg("");
                       setDate(chosen);

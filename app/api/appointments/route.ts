@@ -128,6 +128,22 @@ export async function POST(req: Request) {
       );
     }
 
+    // Strict Server-Side Date Guard: Reject past dates
+    const appointmentDateStr = String(body.appointment_date).split("@")[0].trim();
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const minSelectableDate = `${year}-${month}-${day}`;
+
+    const isEmergency = String(body.token).startsWith("EMG-");
+    if (!isEmergency && appointmentDateStr && appointmentDateStr < minSelectableDate) {
+      return NextResponse.json(
+        { error: "Appointments cannot be booked for past dates. Please select today or a future date." },
+        { status: 400 }
+      );
+    }
+
     // Prepare unified summary object containing clinical triage and document links
     let summaryObj: Record<string, any> = {};
     if (body.summary) {
