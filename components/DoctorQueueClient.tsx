@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 export type ExtractedMedication = {
@@ -46,6 +46,11 @@ export type AppointmentItem = {
   symptoms: string | null;
   summary: string | null;
   urgent: boolean;
+  urgency_level?: string | null;
+  ambulance_id?: string | null;
+  unit_assigned?: string | null;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
   prescription_url?: string | null;
   report_url?: string | null;
   document_url?: string | null;
@@ -67,11 +72,56 @@ export type AppointmentItem = {
     summary?: string;
     urgent_flag?: boolean;
     status?: string;
+    ambulance_id?: string | null;
+    unit_assigned?: string | null;
+    latitude?: string | number | null;
+    longitude?: string | number | null;
+    reported_by?: string | null;
+    eta_mins?: number | null;
     prescription_url?: string | null;
     report_url?: string | null;
     document_url?: string | null;
   } | null;
 };
+
+export function isRedAlert(apt?: AppointmentItem | null): boolean {
+  if (!apt) return false;
+  return Boolean(
+    apt.urgency_level === "CRITICAL_RED_ALERT" ||
+      apt.parsed_summary?.urgency_level === "CRITICAL_RED_ALERT" ||
+      apt.token?.startsWith("EMG-") ||
+      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY")
+  );
+}
+
+export function playRedAlertTone() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+    [0, 0.16, 0.32].forEach((delay) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(880, now + delay);
+      osc.frequency.exponentialRampToValueAtTime(440, now + delay + 0.12);
+
+      gain.gain.setValueAtTime(0.25, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.12);
+    });
+  } catch (err) {
+    console.warn("Could not play red alert tone:", err);
+  }
+}
 
 export default function DoctorQueueClient({
   initialAppointments,
@@ -86,6 +136,24 @@ export default function DoctorQueueClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [ehrExportSuccess, setEhrExportSuccess] = useState<string | null>(null);
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
+
+  const seenRedAlertsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let hasNewRedAlert = false;
+    appointments.forEach((apt) => {
+      if (isRedAlert(apt)) {
+        if (!seenRedAlertsRef.current.has(apt.token)) {
+          seenRedAlertsRef.current.add(apt.token);
+          hasNewRedAlert = true;
+        }
+      }
+    });
+
+    if (hasNewRedAlert) {
+      playRedAlertTone();
+    }
+  }, [appointments]);
 
   async function handleUpdateStatus(token: string, newStatus: string) {
     setUpdatingToken(token);
@@ -157,6 +225,17 @@ export default function DoctorQueueClient({
 
     return true;
   });
+
+  // Sort to pin CRITICAL_RED_ALERT at Position #0
+  const sortedFilteredAppointments = [...filteredAppointments].sort((a, b) => {
+    const aRed = isRedAlert(a);
+    const bRed = isRedAlert(b);
+    if (aRed && !bRed) return -1;
+    if (!aRed && bRed) return 1;
+    return 0;
+  });
+
+  const redAlertCount = appointments.filter((a) => isRedAlert(a)).length;
 
   const urgentCount = appointments.filter((a) => a.urgent).length;
   const waitingCount = appointments.filter((a) => a.status !== "Completed").length;
@@ -321,7 +400,7 @@ export default function DoctorQueueClient({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {filteredAppointments.length === 0 ? (
+              {sortedFilteredAppointments.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center text-slate-500">
                     <span className="text-3xl">🩺</span>
@@ -331,9 +410,10 @@ export default function DoctorQueueClient({
                   </td>
                 </tr>
               ) : (
-                filteredAppointments.map((apt) => {
+                sortedFilteredAppointments.map((apt) => {
                   const isCompleted = apt.status === "Completed";
                   const isConsulting = apt.status === "In-Consultation";
+                  const redAlert = isRedAlert(apt);
                   const rx = apt.prescription_url || apt.parsed_summary?.prescription_url;
                   const rep =
                     apt.report_url ||
@@ -342,90 +422,126 @@ export default function DoctorQueueClient({
                     apt.document_url;
 
                   return (
-                    <tr
-                      key={apt.token}
-                      className={`group transition-all duration-150 hover:bg-slate-800/40 ${
-                        apt.urgent
-                          ? "border-l-4 border-rose-500 bg-rose-950/20"
-                          : "border-l-4 border-slate-800"
-                      }`}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-base font-black text-blue-400 group-hover:text-blue-300 transition-colors">
-                            {apt.token}
-                          </span>
-                        </div>
-                        <p className="font-bold text-white text-sm mt-0.5">
-                          {apt.patient_name}
-                          {apt.age ? ` (${apt.age}y${apt.gender ? ` / ${apt.gender[0]}` : ""})` : ""}
-                        </p>
-                      </td>
+                    <React.Fragment key={apt.token}>
+                      {redAlert && (
+                        <tr className="border-b border-red-500/40 bg-gradient-to-r from-red-950 via-rose-900 to-red-950 text-white font-black text-xs uppercase tracking-wider animate-pulse">
+                          <td colSpan={6} className="px-6 py-2 border-l-4 border-red-500">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="flex h-2.5 w-2.5 rounded-full bg-red-400 animate-ping" />
+                                <span className="text-red-100">
+                                  🚨 PRIORITY #0: AUTONOMOUS AMBULANCE DISPATCHED — CRITICAL ROAD TRAUMA ALERT
+                                </span>
+                              </div>
+                              <span className="rounded-md bg-black/60 px-2.5 py-0.5 text-[10px] font-mono text-cyan-300 border border-red-400/40">
+                                UNIT #MED-09 EN ROUTE
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr
+                        className={`group transition-all duration-150 hover:bg-slate-800/40 ${
+                          redAlert
+                            ? "border-l-4 border-red-500 bg-red-950/30 ring-1 ring-red-500/40"
+                            : apt.urgent
+                            ? "border-l-4 border-rose-500 bg-rose-950/20"
+                            : "border-l-4 border-slate-800"
+                        }`}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-mono text-base font-black transition-colors ${
+                                redAlert
+                                  ? "text-red-400 group-hover:text-red-300"
+                                  : "text-blue-400 group-hover:text-blue-300"
+                              }`}
+                            >
+                              {apt.token}
+                            </span>
+                            {redAlert && (
+                              <span className="rounded bg-red-500/30 px-2 py-0.5 text-[10px] font-bold text-red-300 border border-red-400/50">
+                                SOS
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-bold text-white text-sm mt-0.5">
+                            {apt.patient_name}
+                            {apt.age ? ` (${apt.age}y${apt.gender ? ` / ${apt.gender[0]}` : ""})` : ""}
+                          </p>
+                        </td>
 
-                      <td className="px-6 py-4 text-xs">
-                        <p className="font-bold text-slate-200">{apt.department}</p>
-                        <p className="text-slate-400 mt-0.5">{apt.appointment_date}</p>
-                      </td>
+                        <td className="px-6 py-4 text-xs">
+                          <p className="font-bold text-slate-200">{apt.department}</p>
+                          <p className="text-slate-400 mt-0.5">{apt.appointment_date}</p>
+                        </td>
 
-                      <td className="px-6 py-4">
-                        {apt.urgent ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 px-3 py-1 text-xs font-black text-rose-300 border border-rose-500/40 animate-pulse">
-                            <span className="h-2 w-2 rounded-full bg-rose-400" />
-                            HIGH URGENCY
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300 border border-blue-500/20">
-                            Standard
-                          </span>
-                        )}
-                      </td>
+                        <td className="px-6 py-4">
+                          {redAlert ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-black text-white shadow-md shadow-red-500/40 animate-pulse border border-red-400">
+                              <span className="h-2 w-2 rounded-full bg-white animate-ping" />
+                              CRITICAL RED ALERT
+                            </span>
+                          ) : apt.urgent ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 px-3 py-1 text-xs font-black text-rose-300 border border-rose-500/40 animate-pulse">
+                              <span className="h-2 w-2 rounded-full bg-rose-400" />
+                              HIGH URGENCY
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold text-blue-300 border border-blue-500/20">
+                              Standard
+                            </span>
+                          )}
+                        </td>
 
-                      {/* Interactive Consultation Status */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                              isCompleted
-                                ? "bg-emerald-950 text-emerald-300 border border-emerald-800/80"
-                                : isConsulting
-                                ? "bg-cyan-950 text-cyan-300 border border-cyan-800/80 animate-pulse"
-                                : "bg-amber-950 text-amber-300 border border-amber-800/80"
-                            }`}
+                        {/* Interactive Consultation Status */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                                isCompleted
+                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-800/80"
+                                  : isConsulting
+                                  ? "bg-cyan-950 text-cyan-300 border border-cyan-800/80 animate-pulse"
+                                  : "bg-amber-950 text-amber-300 border border-amber-800/80"
+                              }`}
+                            >
+                              {apt.status || "Waiting"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Multi-Document Indicators */}
+                        <td className="px-6 py-4 text-xs">
+                          {rx && rep ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-xl border border-cyan-800/60">
+                              📄 Rx + 🩻 Report
+                            </span>
+                          ) : rx ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-blue-300 bg-blue-950/60 px-2.5 py-1 rounded-xl border border-blue-800/60">
+                              📄 Rx Attached
+                            </span>
+                          ) : rep ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-xl border border-indigo-800/60">
+                              🩻 Report Attached
+                            </span>
+                          ) : (
+                            <span className="text-slate-500 text-xs">No files</span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => setSelectedAppointment(apt)}
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-500 hover:shadow-md hover:shadow-blue-500/20 active:scale-95"
                           >
-                            {apt.status || "Waiting"}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Multi-Document Indicators */}
-                      <td className="px-6 py-4 text-xs">
-                        {rx && rep ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-xl border border-cyan-800/60">
-                            📄 Rx + 🩻 Report
-                          </span>
-                        ) : rx ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-blue-300 bg-blue-950/60 px-2.5 py-1 rounded-xl border border-blue-800/60">
-                            📄 Rx Attached
-                          </span>
-                        ) : rep ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-xl border border-indigo-800/60">
-                            🩻 Report Attached
-                          </span>
-                        ) : (
-                          <span className="text-slate-500 text-xs">No files</span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setSelectedAppointment(apt)}
-                          className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-blue-500 hover:shadow-md hover:shadow-blue-500/20 active:scale-95"
-                        >
-                          <span>Review Intake</span>
-                          <span>→</span>
-                        </button>
-                      </td>
-                    </tr>
+                            <span>Review Intake</span>
+                            <span>→</span>
+                          </button>
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   );
                 })
               )}
@@ -487,6 +603,56 @@ export default function DoctorQueueClient({
 
             {/* Drawer Scrollable Body: EXACT 6-TIER BRIEFING LAYOUT */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* DEDICATED AUTONOMOUS AMBULANCE FLEET TELEMETRY CARD FOR RED ALERT */}
+              {isRedAlert(selectedAppointment) && (
+                <div className="rounded-3xl border-2 border-red-500 bg-gradient-to-r from-red-950 via-slate-900 to-red-950 p-5 shadow-2xl shadow-red-950/80 animate-pulse">
+                  <div className="flex items-center justify-between border-b border-red-500/40 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-3 w-3 rounded-full bg-red-500 animate-ping" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-red-200">
+                        AUTONOMOUS AMBULANCE FLEET TELEMETRY
+                      </h4>
+                    </div>
+                    <span className="rounded-full bg-red-500/20 border border-red-400 px-3 py-0.5 text-[11px] font-black text-red-300">
+                      DISPATCH STATUS: EN ROUTE (LEVEL 1 TRAUMA)
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="rounded-2xl bg-black/60 p-3 border border-red-500/30">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Assigned Unit</span>
+                      <p className="mt-1 font-mono font-bold text-white text-xs sm:text-sm">
+                        {selectedAppointment?.parsed_summary?.unit_assigned ||
+                          "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/60 p-3 border border-red-500/30">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Live GPS Coordinates</span>
+                      <p className="mt-1 font-mono font-bold text-cyan-300 text-xs sm:text-sm">
+                        {selectedAppointment?.parsed_summary?.latitude || "17.4435° N"},{" "}
+                        {selectedAppointment?.parsed_summary?.longitude || "78.3772° E"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-black/60 p-3 border border-red-500/30">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Trauma Bay ETA</span>
+                      <p className="mt-1 font-mono font-black text-rose-400 text-xs sm:text-sm">
+                        {selectedAppointment?.parsed_summary?.eta_mins || 5} mins (Priority Clearance)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-red-300">
+                    <span>
+                      Incident Origin:{" "}
+                      {selectedAppointment?.parsed_summary?.reported_by || "Bystander / Roadside Alert"}
+                    </span>
+                    <span className="font-semibold text-emerald-400">✓ Resuscitation & Crash-Cart Ready</span>
+                  </div>
+                </div>
+              )}
+
               {/* TIER 1: TOP SAFETY GUARDRAIL */}
               <div className="rounded-2xl border border-amber-500/40 bg-amber-950/50 p-4 text-xs font-medium text-amber-200 leading-relaxed shadow-sm">
                 ⚖️ <strong>CLINICAL DECISION SUPPORT NOTICE (AI SAFETY GUARDRAIL):</strong> MediBridge AI models provide preliminary synthesis for triage acceleration only. Machine learning models are subject to margin of error. Clinicians must cross-verify all extracted medications and radiological impressions against the original source documents before prescribing.

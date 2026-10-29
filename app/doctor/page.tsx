@@ -64,6 +64,7 @@ async function DoctorQueueData() {
       ...item,
       status,
       parsed_summary: parsedSummary,
+      urgency_level: item.urgency_level || parsedSummary?.urgency_level || null,
       prescription_url,
       report_url,
       document_url,

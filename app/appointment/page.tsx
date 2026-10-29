@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/context/LanguageContext";
 
 const departmentDoctors: Record<string, string[]> = {
   Cardiology: [
@@ -51,6 +52,12 @@ const genderOptions = [
 
 export default function AppointmentPage() {
   const router = useRouter();
+  const { language, t } = useLanguage();
+
+  // Voice Input States
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState("");
+  const recognitionRef = useRef<any>(null);
 
   // Patient Demographic Fields
   const [name, setName] = useState("");
@@ -58,6 +65,74 @@ export default function AppointmentPage() {
   const [gender, setGender] = useState("Female");
   const [phone, setPhone] = useState("");
   const [symptoms, setSymptoms] = useState("");
+
+  function toggleVoiceInput() {
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setIsListening(false);
+      return;
+    }
+
+    setSpeechError("");
+
+    const SpeechRecognition =
+      (typeof window !== "undefined" &&
+        ((window as any).SpeechRecognition ||
+          (window as any).webkitSpeechRecognition)) ||
+      null;
+
+    if (!SpeechRecognition) {
+      setSpeechError(t("voice_error"));
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      // Set recognition language dynamically based on context language:
+      // 'en' -> 'en-IN', 'hi' -> 'hi-IN', 'te' -> 'te-IN'
+      const langMap: Record<string, string> = {
+        en: "en-IN",
+        hi: "hi-IN",
+        te: "te-IN",
+      };
+      recognition.lang = langMap[language] || "en-IN";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results?.[0]?.[0]?.transcript;
+        if (transcript) {
+          setSymptoms((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn("Speech recognition error:", event.error);
+        if (event.error !== "no-speech") {
+          setSpeechError(t("voice_error"));
+        }
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.warn("Could not start speech recognition:", err);
+      setSpeechError(t("voice_error"));
+      setIsListening(false);
+    }
+  }
 
   // Scheduling Fields
   const [department, setDepartment] = useState("General Medicine");
@@ -319,10 +394,10 @@ export default function AppointmentPage() {
               </span>
             </div>
             <h1 className="mt-3 text-3xl font-black text-slate-900 sm:text-4xl">
-              Book Your Appointment
+              {t("form_title")}
             </h1>
             <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Complete your patient profile, upload past prescriptions and medical scans for deep Sarvam AI OCR and xAI Grok clinical triage.
+              {t("form_desc")}
             </p>
           </div>
 
@@ -340,7 +415,7 @@ export default function AppointmentPage() {
                   htmlFor="patient-name"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Patient Full Name <span className="text-rose-500">*</span>
+                  {t("patient_name")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="patient-name"
@@ -348,7 +423,7 @@ export default function AppointmentPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Eleanor Vance"
+                  placeholder={t("patient_name_placeholder")}
                   className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -358,7 +433,7 @@ export default function AppointmentPage() {
                   htmlFor="patient-age"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Age <span className="text-rose-500">*</span>
+                  {t("age")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="patient-age"
@@ -378,7 +453,7 @@ export default function AppointmentPage() {
                   htmlFor="patient-gender"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Gender <span className="text-rose-500">*</span>
+                  {t("gender")} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   id="patient-gender"
@@ -402,7 +477,7 @@ export default function AppointmentPage() {
                   htmlFor="patient-phone"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Contact Phone Number <span className="text-rose-500">*</span>
+                  {t("phone")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="patient-phone"
@@ -410,27 +485,59 @@ export default function AppointmentPage() {
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. +1 (555) 019-2834"
+                  placeholder={t("phone_placeholder")}
                   className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div className="sm:col-span-7">
-                <label
-                  htmlFor="patient-symptoms"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-700"
-                >
-                  Symptoms & Chief Medical Concern <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="patient-symptoms"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700"
+                  >
+                    {t("symptoms")} <span className="text-rose-500">*</span>
+                  </label>
+
+                  <div className="flex items-center gap-2">
+                    {isListening && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-600 animate-pulse">
+                        <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
+                        <span>{t("voice_listening")}</span>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={toggleVoiceInput}
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-bold transition-all ${
+                        isListening
+                          ? "bg-rose-500 text-white ring-4 ring-rose-500/30 animate-pulse shadow-md"
+                          : "bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100"
+                      }`}
+                      title={t("voice_help")}
+                    >
+                      <span>{isListening ? "⏹️" : "🎙️"}</span>
+                      <span>{isListening ? t("voice_listening") : t("voice_help")}</span>
+                    </button>
+                  </div>
+                </div>
+
                 <textarea
                   id="patient-symptoms"
                   rows={2}
                   required
                   value={symptoms}
                   onChange={(e) => setSymptoms(e.target.value)}
-                  placeholder="e.g. Sharp retrosternal chest pain with shortness of breath upon exertion..."
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 p-3.5 text-sm font-medium text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500 leading-relaxed"
+                  placeholder={t("symptoms_placeholder")}
+                  className={`mt-2 w-full rounded-2xl border bg-slate-50/50 p-3.5 text-sm font-medium text-slate-900 outline-none transition-all duration-200 leading-relaxed ${
+                    isListening
+                      ? "border-rose-400 ring-2 ring-rose-400/40 bg-rose-50/20"
+                      : "border-slate-300 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
+                  }`}
                 />
+                {speechError && (
+                  <p className="mt-1 text-[11px] font-semibold text-rose-600">{speechError}</p>
+                )}
               </div>
             </div>
 
@@ -441,7 +548,7 @@ export default function AppointmentPage() {
                   htmlFor="dept-select"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Clinical Specialty <span className="text-rose-500">*</span>
+                  {t("specialty")} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   id="dept-select"
@@ -462,7 +569,7 @@ export default function AppointmentPage() {
                   htmlFor="doc-select"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Select Physician <span className="text-rose-500">*</span>
+                  {t("physician")} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   id="doc-select"
@@ -486,7 +593,7 @@ export default function AppointmentPage() {
                   htmlFor="apt-date"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Preferred Consultation Date <span className="text-rose-500">*</span>
+                  {t("appointment_date")} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   id="apt-date"
@@ -503,7 +610,7 @@ export default function AppointmentPage() {
                   htmlFor="apt-time"
                   className="block text-xs font-bold uppercase tracking-wider text-slate-700"
                 >
-                  Preferred Time Slot <span className="text-rose-500">*</span>
+                  {t("appointment_time")} <span className="text-rose-500">*</span>
                 </label>
                 <select
                   id="apt-time"
@@ -524,13 +631,13 @@ export default function AppointmentPage() {
             <div className="border-t border-slate-100 pt-6">
               <div className="mb-4">
                 <span className="text-xs font-black uppercase tracking-wider text-blue-700">
-                  Clinical Documentation Vault
+                  {t("doc_vault_title")}
                 </span>
                 <h3 className="mt-1 text-base font-bold text-slate-900">
-                  Attach Medical Records for AI Triage (Optional)
+                  {t("doc_vault_subtitle")}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Uploaded files are processed through Sarvam AI OCR and encrypted in the Cloudinary healthcare vault.
+                  {t("doc_vault_desc")}
                 </p>
               </div>
 
@@ -545,10 +652,10 @@ export default function AppointmentPage() {
                         </span>
                         <div>
                           <h4 className="text-sm font-bold text-slate-900">
-                            Previous Prescriptions
+                            {t("rx_title")}
                           </h4>
                           <span className="text-[11px] text-slate-400">
-                            Handwritten Rx notes, doctor slips
+                            {t("rx_subtitle")}
                           </span>
                         </div>
                       </div>
@@ -641,10 +748,10 @@ export default function AppointmentPage() {
                         </span>
                         <div>
                           <h4 className="text-sm font-bold text-slate-900">
-                            Medical Reports & Scans
+                            {t("reports_title")}
                           </h4>
                           <span className="text-[11px] text-slate-400">
-                            Lab reports, blood tests, X-rays, MRI
+                            {t("reports_subtitle")}
                           </span>
                         </div>
                       </div>
@@ -739,10 +846,10 @@ export default function AppointmentPage() {
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>{loadingStep || "Processing Patient Intake..."}</span>
+                    <span>{loadingStep || t("booking_processing")}</span>
                   </span>
                 ) : (
-                  "Confirm & Issue Official Token →"
+                  t("book_visit")
                 )}
               </button>
             </div>
