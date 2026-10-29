@@ -58,6 +58,7 @@ export default function AppointmentPage() {
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState("");
   const recognitionRef = useRef<any>(null);
+  const baseSymptomsRef = useRef<string>("");
 
   // Patient Demographic Fields
   const [name, setName] = useState("");
@@ -69,7 +70,11 @@ export default function AppointmentPage() {
   function toggleVoiceInput() {
     if (isListening) {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.warn("Could not stop recognition:", e);
+        }
       }
       setIsListening(false);
       return;
@@ -91,27 +96,40 @@ export default function AppointmentPage() {
     try {
       const recognition = new SpeechRecognition();
       recognitionRef.current = recognition;
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true;
+      recognition.interimResults = true;
 
-      // Set recognition language dynamically based on context language:
-      // 'en' -> 'en-IN', 'hi' -> 'hi-IN', 'te' -> 'te-IN'
-      const langMap: Record<string, string> = {
-        en: "en-IN",
-        hi: "hi-IN",
-        te: "te-IN",
-      };
-      recognition.lang = langMap[language] || "en-IN";
+      // Regional accent calibration based on active locale
+      if (language === "hi") {
+        recognition.lang = "hi-IN";
+      } else if (language === "te") {
+        recognition.lang = "te-IN";
+      } else {
+        recognition.lang = "en-IN";
+      }
+
+      baseSymptomsRef.current = symptoms;
 
       recognition.onstart = () => {
         setIsListening(true);
       };
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results?.[0]?.[0]?.transcript;
-        if (transcript) {
-          setSymptoms((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        let finalTranscript = "";
+        let interimTranscript = "";
+
+        for (let i = 0; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + " ";
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
         }
+
+        const base = baseSymptomsRef.current.trim();
+        const spoken = (finalTranscript + interimTranscript).trim();
+        const sep = base && spoken ? " " : "";
+        setSymptoms(base + sep + spoken);
       };
 
       recognition.onerror = (event: any) => {
@@ -503,7 +521,7 @@ export default function AppointmentPage() {
                     {isListening && (
                       <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-rose-600 animate-pulse">
                         <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-                        <span>{t("voice_listening")}</span>
+                        <span>{t("micListening")}</span>
                       </span>
                     )}
                     <button
@@ -517,7 +535,7 @@ export default function AppointmentPage() {
                       title={t("voice_help")}
                     >
                       <span>{isListening ? "⏹️" : "🎙️"}</span>
-                      <span>{isListening ? t("voice_listening") : t("voice_help")}</span>
+                      <span>{isListening ? t("micListening") : t("micIdle")}</span>
                     </button>
                   </div>
                 </div>

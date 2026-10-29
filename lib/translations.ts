@@ -37,6 +37,8 @@ export const translations = {
     voice_help: "Tap mic to speak in your language",
     voice_listening: "Listening... speak now",
     voice_error: "Microphone permission denied or speech recognition not supported.",
+    micListening: "Listening... speak now",
+    micIdle: "Voice Input",
     specialty: "Clinical Specialty",
     physician: "Select Physician",
     appointment_date: "Preferred Date",
@@ -75,6 +77,80 @@ export const translations = {
     emergency_close: "Dismiss Telemetry Screen",
     emergency_dispatched_notice:
       "Hospital Trauma Bay alerted. Resuscitation team and crash cart on standby.",
+
+    // Patient Dashboard Keys
+    dashboardTitle: "Patient Health Dashboard",
+    dashboardSubtitle:
+      "Track your consultation queue status, view official token details, and access secured medical records.",
+    bookNewVisit: "+ Book New Visit",
+    uploadRecords: "Upload Records",
+    scheduleConsultation: "Schedule Consultation",
+    scheduleDesc:
+      "Book with specialists across Cardiology, Dermatology, Neurology, Orthopedics, Pediatrics, or General Medicine.",
+    uploadMoreRecords: "Upload Additional Records",
+    uploadMoreDesc:
+      "Add recent lab reports, imaging scans, or previous prescriptions to your clinical intake file.",
+    clinicGuidelines: "Clinic Guidelines",
+    clinicGuidelinesDesc:
+      "Please arrive 10 minutes prior to your scheduled slot. Bring original government ID for biometric check-in.",
+    tokenTrackerTitle: "Active Token Tracker",
+    tokenTrackerSubtitle:
+      "Track your consultation token or enter an appointment ID to view live status.",
+    trackTokenBtn: "Track Token",
+    officialClinicToken: "Official Clinic Token",
+    scheduledTime: "Scheduled Slot",
+    queueStatus: "Queue Status",
+    waiting: "Waiting",
+    inConsultation: "In Consultation",
+    completed: "Completed",
+    attachedDocuments: "Attached Consultation Documents",
+    attachedDesc: "Prescriptions and diagnostic reports processed by AI Triage.",
+    preview: "Preview",
+    download: "Download ↗",
+    updateIntakeBtn: "Update Intake & Symptoms →",
+    clinicNotice:
+      "Clinic Notice: Please watch the overhead display monitors for your token call. Emergency trauma cases receive priority routing.",
+
+    // Supplementary Dashboard UI Elements
+    livePatientCarePortal: "Live Patient Care Portal",
+    bookAppointmentAction: "Book appointment →",
+    openDocUpload: "Open document upload →",
+    clinicArrivalPolicy: "Clinic arrival policy →",
+    realTimeSynchronized: "Real-Time Synchronized",
+    tokenInputPlaceholder: "Token (e.g. MB-743721)",
+    tokenChecking: "Checking...",
+    liveStatusSync: "Live Status Synchronized",
+    copiedToClipboard: "✓ Copied to clipboard",
+    copyTokenBtn: "📋 Copy Token",
+    patientNameLabel: "Patient Name:",
+    specialtyDoctorLabel: "Specialty & Doctor:",
+    scheduledTimeLabel: "Scheduled Time:",
+    queueStatusLabel: "Queue Status:",
+    waitCompleted: "Consultation Completed",
+    waitInConsultation: "Currently in Physician Consultation",
+    waitEstimated: "Estimated Wait Time: ~10-15 Minutes",
+    waitCompletedDesc:
+      "Your visit is complete. Follow-up instructions have been filed by your physician.",
+    waitInConsultationDesc: "Please enter the assigned consultation suite when called.",
+    waitEstimatedDesc:
+      "Current Queue Position: #2. Please remain in the patient reception lounge.",
+    patientVaultBadge: "Patient Vault",
+    vaultSubtitle: "Securely stored in your confidential Cloudinary healthcare repository",
+    attachedPrescription: "Attached: Prescription",
+    attachedReport: "Attached: Diagnostic Report",
+    encryptedVerified: "Encrypted & Verified",
+    noRxAttached: "No previous prescriptions attached.",
+    attachRxBtn: "+ Attach Rx",
+    noReportAttached: "No lab reports or scans attached.",
+    attachReportBtn: "+ Attach Report",
+    clinicPatientNotice: "Clinic Patient Notice",
+    clinicPatientNoticeDesc:
+      "Your uploaded files are delivered directly to your attending physician's protected clinical workstation. Please have your token ready when entering the examination room.",
+    noActiveTokenTitle: "No Active Token Loaded",
+    noActiveTokenDesc:
+      "Enter your appointment token above to monitor your consultation position, or book a new appointment to generate one.",
+    bookNewAppointmentNow: "Book New Appointment Now",
+    docVaultViewer: "Document Vault Viewer",
   },
   hi: {
     navbar_brand_subtitle: "क्लिनिकल ट्रायज और हेल्थकेयर ऑपरेटिंग सिस्टम",
@@ -112,6 +188,8 @@ export const translations = {
     voice_help: "माइक दबाकर बोलें",
     voice_listening: "सुन रहा है... बोलिए",
     voice_error: "माइक की अनुमति नहीं मिली या ब्राउज़र में वॉइस इनपुट असमर्थित है।",
+    micListening: "सुन रहा है... बोलिए",
+    micIdle: "आवाज़ से बोलें",
     specialty: "क्लिनिकल विभाग",
     physician: "डॉक्टर चुनें",
     appointment_date: "पसंदीदा तारीख",
@@ -150,6 +228,79 @@ export const translations = {
     emergency_close: "स्क्रीन बंद करें",
     emergency_dispatched_notice:
       "अस्पताल ट्रॉमा टीम को सतर्क कर दिया गया है। ट्रॉमा रिससिटेशन टीम तैयार है।",
+
+    // Patient Dashboard Keys
+    dashboardTitle: "मरीज़ स्वास्थ्य डैशबोर्ड",
+    dashboardSubtitle:
+      "अपनी परामर्श कतार की स्थिति देखें, टोकन विवरण जांचें और मेडिकल रिकॉर्ड्स सुरक्षित रूप से एक्सेस करें।",
+    bookNewVisit: "+ नई विज़िट बुक करें",
+    uploadRecords: "रिकॉर्ड अपलोड करें",
+    scheduleConsultation: "परामर्श शेड्यूल करें",
+    scheduleDesc:
+      "कार्डियोलॉजी, डर्मेटोलॉजी, न्यूरोलॉजी, ऑर्थोपेडिक्स, बाल रोग, या जनरल मेडिसिन में विशेषज्ञों से परामर्श लें।",
+    uploadMoreRecords: "और रिकॉर्ड्स अपलोड करें",
+    uploadMoreDesc:
+      "अपॉइंटमेंट से पहले अपनी फ़ाइल में नए लैब परीक्षण, एक्स-रे या नुस्खे जोड़ें।",
+    clinicGuidelines: "क्लिनिक दिशानिर्देश",
+    clinicGuidelinesDesc:
+      "कृपया निर्धारित समय से 10 मिनट पहले पहुंचें। परामर्श के लिए मूल पहचान पत्र साथ रखें।",
+    tokenTrackerTitle: "सक्रिय अपॉइंटमेंट टोकन खोजें",
+    tokenTrackerSubtitle:
+      "अपनी विज़िट का विवरण और लाइव कतार स्थिति देखने के लिए अपना 6-अंकीय टोकन दर्ज करें:",
+    trackTokenBtn: "टोकन खोजें",
+    officialClinicToken: "आधिकारिक क्लिनिक टोकन",
+    scheduledTime: "निर्धारित समय",
+    queueStatus: "कतार स्थिति",
+    waiting: "प्रतीक्षारत",
+    inConsultation: "परामर्श जारी है",
+    completed: "पूर्ण",
+    attachedDocuments: "संलग्न मेडिकल दस्तावेज़",
+    attachedDesc: "परामर्श से पहले क्लिनिकल ट्रायज एआई द्वारा संसाधित रिकॉर्ड।",
+    preview: "पूर्वावलोकन",
+    download: "डाउनलोड ↗",
+    updateIntakeBtn: "लक्षण व रिकॉर्ड्स अपडेट करें →",
+    clinicNotice:
+      "क्लिनिक सूचना: कृपया डॉक्टर के केबिन के बाहर डिस्प्ले स्क्रीन पर अपने टोकन नंबर की प्रतीक्षा करें। आपातकालीन रोगियों को प्राथमिकता दी जाती है।",
+
+    // Supplementary Dashboard UI Elements
+    livePatientCarePortal: "लाइव मरीज़ सेवा पोर्टल",
+    bookAppointmentAction: "अपॉइंटमेंट बुक करें →",
+    openDocUpload: "दस्तावेज़ अपलोड खोलें →",
+    clinicArrivalPolicy: "क्लिनिक आगमन नीति →",
+    realTimeSynchronized: "रीयल-टाइम सिंक्रोनाइज़्ड",
+    tokenInputPlaceholder: "टोकन (उदा. MB-743721)",
+    tokenChecking: "जांच जारी है...",
+    liveStatusSync: "लाइव स्थिति सिंक्रोनाइज़्ड",
+    copiedToClipboard: "✓ क्लिपबोर्ड पर कॉपी किया गया",
+    copyTokenBtn: "📋 टोकन कॉपी करें",
+    patientNameLabel: "मरीज़ का नाम:",
+    specialtyDoctorLabel: "विभाग एवं डॉक्टर:",
+    scheduledTimeLabel: "निर्धारित समय:",
+    queueStatusLabel: "कतार स्थिति:",
+    waitCompleted: "परामर्श पूरा हुआ",
+    waitInConsultation: "वर्तमान में डॉक्टर के साथ परामर्श जारी है",
+    waitEstimated: "अनुमानित प्रतीक्षा समय: ~10-15 मिनट",
+    waitCompletedDesc:
+      "आपकी विज़िट पूरी हो गई है। आगे के निर्देश आपके डॉक्टर द्वारा दर्ज कर दिए गए हैं।",
+    waitInConsultationDesc: "बुलाए जाने पर कृपया निर्धारित परामर्श कक्ष में प्रवेश करें।",
+    waitEstimatedDesc: "वर्तमान कतार स्थिति: #2. कृपया प्रतीक्षालय में उपस्थित रहें।",
+    patientVaultBadge: "मरीज़ वॉल्ट",
+    vaultSubtitle: "आपके गोपनीय क्लाउडिनरी स्वास्थ्य रिपॉजिटरी में सुरक्षित रूप से संग्रहीत",
+    attachedPrescription: "संलग्न: नुस्खा / पर्ची",
+    attachedReport: "संलग्न: डायग्नोस्टिक रिपोर्ट",
+    encryptedVerified: "एन्क्रिप्टेड एवं सत्यापित",
+    noRxAttached: "कोई पुराना नुस्खा संलग्न नहीं है।",
+    attachRxBtn: "+ पर्ची जोड़ें",
+    noReportAttached: "कोई लैब रिपोर्ट या स्कैन संलग्न नहीं है।",
+    attachReportBtn: "+ रिपोर्ट जोड़ें",
+    clinicPatientNotice: "क्लिनिक मरीज़ सूचना",
+    clinicPatientNoticeDesc:
+      "आपकी अपलोड की गई फ़ाइलें सीधे आपके उपस्थित चिकित्सक के सुरक्षित वर्कस्टेशन पर पहुंचाई जाती हैं। कृपया कक्ष में प्रवेश करते समय अपना टोकन तैयार रखें।",
+    noActiveTokenTitle: "कोई सक्रिय टोकन नहीं मिला",
+    noActiveTokenDesc:
+      "अपनी परामर्श स्थिति देखने के लिए ऊपर टोकन दर्ज करें, या नया टोकन प्राप्त करने के लिए नई अपॉइंटमेंट बुक करें।",
+    bookNewAppointmentNow: "अभी नई अपॉइंटमेंट बुक करें",
+    docVaultViewer: "दस्तावेज़ वॉल्ट व्यूअर",
   },
   te: {
     navbar_brand_subtitle: "క్లినికల్ ట్రయాజ్ & హెల్త్‌కేర్ ఆపరేటింగ్ సిస్టమ్",
@@ -187,6 +338,8 @@ export const translations = {
     voice_help: "మాట్లాడటానికి మైక్ నొక్కండి",
     voice_listening: "వింటోంది... మాట్లాడండి",
     voice_error: "మైక్రోఫోన్ అనుమతి నిరాకరించబడింది లేదా బ్రౌజర్ సపోర్ట్ చేయలేదు.",
+    micListening: "వింటోంది... మాట్లాడండి",
+    micIdle: "వాయిస్ ఇన్‌పుట్",
     specialty: "క్లినికల్ విభాగం",
     physician: "వైద్యుడిని ఎంచుకోండి",
     appointment_date: "ప్రాధాన్య తేదీ",
@@ -225,8 +378,80 @@ export const translations = {
     emergency_close: "స్క్రీన్‌ను మూసివేయండి",
     emergency_dispatched_notice:
       "ఆసుపత్రి ట్రామా బే అప్రమత్తమైంది. అత్యవసర వైద్య బృందం సిద్ధంగా ఉంది.",
+
+    // Patient Dashboard Keys
+    dashboardTitle: "రోగి ఆరోగ్య డాష్‌బోర్డ్",
+    dashboardSubtitle:
+      "మీ కన్సల్టేషన్ క్యూ స్థితిని చూడండి, టోకెన్ వివరాలను తనిఖీ చేయండి మరియు వైద్య రికార్డులను సురక్షితంగా యాక్సెస్ చేయండి.",
+    bookNewVisit: "+ కొత్త విజిట్ బుక్ చేయండి",
+    uploadRecords: "రికార్డులను అప్‌లోడ్ చేయండి",
+    scheduleConsultation: "కన్సల్టేషన్ షెడ్యూల్ చేయండి",
+    scheduleDesc:
+      "కార్డియాలజీ, డెర్మటాలజీ, న్యూరాలజీ, ఆర్థోపెడిక్స్, పీడియాట్రిక్స్ లేదా జనరల్ మెడిసిన్ నిపుణులను సంప్రదించండి.",
+    uploadMoreRecords: "మరిన్ని రికార్డులను అప్‌లోడ్ చేయండి",
+    uploadMoreDesc:
+      "అపాయింట్‌మెంట్‌కు ముందు కొత్త ల్యాబ్ పరీక్షలు, ఎక్స్-రేలు లేదా ప్రిస్క్రిప్షన్‌లను మీ ఫైల్‌కు జోడించండి.",
+    clinicGuidelines: "క్లినిక్ మార్గదర్శకాలు",
+    clinicGuidelinesDesc:
+      "దయచేసి మీ షెడ్యూల్ చేసిన సమయానికి 10 నిమిషాల ముందుగా చేరుకోండి. కన్సల్టేషన్ కోసం గుర్తింపు కార్డు వెంట తీసుకురండి.",
+    tokenTrackerTitle: "సక్రియ అపాయింట్‌మెంట్ టోకెన్‌ను ట్రాక్ చేయండి",
+    tokenTrackerSubtitle:
+      "మీ విజిట్ వివరాలు మరియు ప్రత్యక్ష క్యూ స్థితిని చూడటానికి మీ 6-అంకెల టోకెన్‌ను నమోదు చేయండి:",
+    trackTokenBtn: "టోకెన్‌ను కనుగొనండి",
+    officialClinicToken: "అధికారిక క్లినిక్ టోకెన్",
+    scheduledTime: "షెడ్యూల్ చేసిన సమయం",
+    queueStatus: "క్యూ స్థితి",
+    waiting: "వేచి ఉన్నారు",
+    inConsultation: "కన్సల్టేషన్‌లో ఉన్నారు",
+    completed: "పూర్తయింది",
+    attachedDocuments: "జతచేయబడిన వైద్య పత్రాలు",
+    attachedDesc: "కన్సల్టేషన్‌కు ముందు క్లినికల్ ట్రయాజ్ AI ద్వారా ప్రాసెస్ చేయబడిన రికార్డులు.",
+    preview: "ప్రివ్యూ",
+    download: "డౌన్‌లోడ్ ↗",
+    updateIntakeBtn: "లక్షణాలు & రికార్డులను నవీకరించండి →",
+    clinicNotice:
+      "క్లినిక్ నోటీసు: దయచేసి డాక్టర్ క్యాబిన్ వెలుపల ఉన్న డిస్‌ప్లే స్క్రీన్‌పై మీ టోకెన్ నంబర్ కోసం వేచి ఉండండి. అత్యవసర రోగులకు ప్రాధాన్యత ఇవ్వబడుతుంది.",
+
+    // Supplementary Dashboard UI Elements
+    livePatientCarePortal: "ప్రత్యక్ష రోగి సంరక్షణ పోర్టల్",
+    bookAppointmentAction: "అపాయింట్‌మెంట్ బుక్ చేయండి →",
+    openDocUpload: "డాక్యుమెంట్ అప్‌లోడ్ తెరవండి →",
+    clinicArrivalPolicy: "క్లినిక్ రాక నిబంధనలు →",
+    realTimeSynchronized: "రియల్-టైమ్ సింక్రొనైజ్ చేయబడింది",
+    tokenInputPlaceholder: "టోకెన్ (ఉదా. MB-743721)",
+    tokenChecking: "తనిఖీ చేస్తోంది...",
+    liveStatusSync: "లైవ్ స్థితి సింక్ చేయబడింది",
+    copiedToClipboard: "✓ క్లిప్‌బోర్డ్‌కి కాపీ చేయబడింది",
+    copyTokenBtn: "📋 టోకెన్ కాపీ చేయండి",
+    patientNameLabel: "రోగి పేరు:",
+    specialtyDoctorLabel: "విభాగం & వైద్యుడు:",
+    scheduledTimeLabel: "షెడ్యూల్ చేసిన సమయం:",
+    queueStatusLabel: "క్యూ స్థితి:",
+    waitCompleted: "కన్సల్టేషన్ పూర్తయింది",
+    waitInConsultation: "ప్రస్తుతం డాక్టర్ కన్సల్టేషన్‌లో ఉన్నారు",
+    waitEstimated: "అంచనా వేసిన వేచి ఉండే సమయం: ~10-15 నిమిషాలు",
+    waitCompletedDesc:
+      "మీ విజిట్ పూర్తయింది. తదుపరి సూచనలు మీ వైద్యునిచే నమోదు చేయబడ్డాయి.",
+    waitInConsultationDesc: "పిలిచినప్పుడు దయచేసి కేటాయించిన కన్సల్టేషన్ గదిలోకి ప్రవేశించండి.",
+    waitEstimatedDesc: "ప్రస్తుత క్యూ స్థానం: #2. దయచేసి రోగుల వేచి ఉండే గదిలో ఉండండి.",
+    patientVaultBadge: "రోగి వాల్ట్",
+    vaultSubtitle: "మీ క్లౌడినరీ హెల్త్‌కేర్ రిపోజిటరీలో సురక్షితంగా నిల్వ చేయబడింది",
+    attachedPrescription: "జతచేయబడింది: ప్రిస్క్రిప్షన్",
+    attachedReport: "జతచేయబడింది: రోగనిర్ధారణ నివేదిక",
+    encryptedVerified: "ఎన్‌క్రిప్ట్ చేయబడింది & ధృవీకరించబడింది",
+    noRxAttached: "మునుపటి ప్రిస్క్రిప్షన్లు ఏవీ జతచేయబడలేదు.",
+    attachRxBtn: "+ ప్రిస్క్రిప్షన్ జతచేయి",
+    noReportAttached: "ల్యాబ్ నివేదికలు లేదా స్కాన్లు ఏవీ జతచేయబడలేదు.",
+    attachReportBtn: "+ రిపోర్ట్ జతచేయి",
+    clinicPatientNotice: "క్లినిక్ రోగి నోటీసు",
+    clinicPatientNoticeDesc:
+      "మీరు అప్‌లోడ్ చేసిన ఫైళ్లు నేరుగా మీ వైద్యుని సురక్షిత క్లినికల్ వర్క్‌స్టేషన్‌కు బదిలీ చేయబడతాయి. దయచేసి గదిలోకి ప్రవేశించేటప్పుడు టోకెన్ సిద్ధంగా ఉంచుకోండి.",
+    noActiveTokenTitle: "యాక్టివ్ టోకెన్ ఏదీ లోడ్ కాలేదు",
+    noActiveTokenDesc:
+      "మీ కన్సల్టేషన్ స్థితిని చూడటానికి పైన మీ అపాయింట్‌మెంట్ టోకెన్‌ను నమోదు చేయండి లేదా కొత్త అపాయింట్‌మెంట్ బుక్ చేయండి.",
+    bookNewAppointmentNow: "ఇప్పుడే కొత్త అపాయింట్‌మెంట్ బుక్ చేయండి",
+    docVaultViewer: "డాక్యుమెంట్ వాల్ట్ వీక్షకం",
   },
 } as const;
 
 export type TranslationKey = keyof typeof translations.en;
-

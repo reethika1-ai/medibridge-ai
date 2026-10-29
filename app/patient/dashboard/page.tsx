@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { useLanguage } from "@/context/LanguageContext";
 
 type AppointmentRecord = {
   token: string;
@@ -28,6 +29,7 @@ type AppointmentRecord = {
 };
 
 function PatientDashboardContent() {
+  const { t } = useLanguage();
   const searchParams = useSearchParams();
   const tokenParam = searchParams.get("token");
 
@@ -59,18 +61,21 @@ function PatientDashboardContent() {
       const res = await fetch(`/api/appointments?token=${encodeURIComponent(tok.trim())}`);
       const json = await res.json();
 
-      if (!res.ok || !json.ok || !json.data || json.data.length === 0) {
-        setAppointment(null);
-        setErrorMsg("No appointment record found for token: " + tok);
-      } else {
-        const item = json.data[0];
-        setAppointment(item);
-        if (typeof window !== "undefined") {
-          localStorage.setItem("medibridge_last_token", item.token);
-        }
+      if (!res.ok) {
+        throw new Error(json.error || "Appointment not found");
       }
-    } catch {
-      setErrorMsg("Failed to communicate with appointment service.");
+
+      const appt = json.appointment;
+      setAppointment(appt);
+      setActiveToken(tok.trim());
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("medibridge_last_token", tok.trim());
+      }
+    } catch (err: any) {
+      console.error("Error fetching patient appointment:", err);
+      setErrorMsg(err.message || "Failed to retrieve appointment details. Please check the token.");
+      setAppointment(null);
     } finally {
       setLoading(false);
     }
@@ -79,19 +84,23 @@ function PatientDashboardContent() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (tokenInput.trim()) {
-      setActiveToken(tokenInput.trim());
       fetchAppointment(tokenInput.trim());
     }
   }
 
   function handleCopy(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   }
 
+  // Safe file extraction for patient preview
   const rxUrl =
-    appointment?.prescription_url || appointment?.parsed_summary?.prescription_url || null;
+    appointment?.prescription_url ||
+    appointment?.parsed_summary?.prescription_url ||
+    null;
 
   const reportUrl =
     appointment?.report_url ||
@@ -115,13 +124,13 @@ function PatientDashboardContent() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3.5 py-1 text-xs font-bold text-blue-200 backdrop-blur-md">
                 <span className="flex h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                Live Patient Care Portal
+                {t("livePatientCarePortal")}
               </div>
               <h1 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl lg:text-5xl">
-                Patient Health Dashboard
+                {t("dashboardTitle")}
               </h1>
               <p className="mt-2 max-w-xl text-blue-100 text-sm sm:text-base leading-relaxed">
-                Monitor your consultation queue status, view confirmed token details, and access attached medical records securely.
+                {t("dashboardSubtitle")}
               </p>
             </div>
 
@@ -130,7 +139,7 @@ function PatientDashboardContent() {
                 href="/appointment"
                 className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-extrabold text-blue-900 shadow-md transition-all duration-300 hover:scale-105 hover:bg-blue-50 hover:shadow-lg active:scale-95"
               >
-                <span>+ Book New Visit</span>
+                <span>{t("bookNewVisit")}</span>
               </Link>
               <Link
                 href={
@@ -140,7 +149,7 @@ function PatientDashboardContent() {
                 }
                 className="inline-flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-bold text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-white/20 active:scale-95"
               >
-                <span>Upload Records</span>
+                <span>{t("uploadRecords")}</span>
               </Link>
             </div>
           </div>
@@ -156,13 +165,13 @@ function PatientDashboardContent() {
               🗓️
             </div>
             <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-blue-600">
-              Schedule Consultation
+              {t("scheduleConsultation")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              Book with Cardiology, Dermatology, Neurology, Orthopedics, Pediatrics, or General Medicine.
+              {t("scheduleDesc")}
             </p>
             <div className="mt-4 flex items-center text-xs font-bold text-blue-600 group-hover:underline">
-              Book appointment →
+              {t("bookAppointmentAction")}
             </div>
           </Link>
 
@@ -178,13 +187,13 @@ function PatientDashboardContent() {
               📄
             </div>
             <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-indigo-600">
-              Upload More Records
+              {t("uploadMoreRecords")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              Attach prescription slips or diagnostic lab scans to your active consultation profile.
+              {t("uploadMoreDesc")}
             </p>
             <div className="mt-4 flex items-center text-xs font-bold text-indigo-600 group-hover:underline">
-              Open document upload →
+              {t("openDocUpload")}
             </div>
           </Link>
 
@@ -196,13 +205,13 @@ function PatientDashboardContent() {
               🏥
             </div>
             <h2 className="mt-4 text-lg font-bold text-slate-900 transition-colors group-hover:text-cyan-600">
-              Clinic Guidelines
+              {t("clinicGuidelines")}
             </h2>
             <p className="mt-1 text-xs text-slate-500 leading-relaxed">
-              Arrive 10 minutes prior to scheduled slot with government photo ID and your token number.
+              {t("clinicGuidelinesDesc")}
             </p>
             <div className="mt-4 flex items-center text-xs font-bold text-cyan-600 group-hover:underline">
-              Clinic arrival policy →
+              {t("clinicArrivalPolicy")}
             </div>
           </Link>
         </section>
@@ -212,18 +221,18 @@ function PatientDashboardContent() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-blue-600">
-                Real-Time Synchronized
+                {t("realTimeSynchronized")}
               </span>
-              <h2 className="text-2xl font-black text-slate-900">Active Token Tracker</h2>
+              <h2 className="text-2xl font-black text-slate-900">{t("tokenTrackerTitle")}</h2>
               <p className="mt-0.5 text-xs text-slate-500">
-                Track your consultation token or enter an appointment ID to view live status.
+                {t("tokenTrackerSubtitle")}
               </p>
             </div>
 
             <form onSubmit={handleSearch} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Token (e.g. MB-743721)"
+                placeholder={t("tokenInputPlaceholder")}
                 value={tokenInput}
                 onChange={(e) => setTokenInput(e.target.value)}
                 className="w-48 sm:w-60 rounded-xl border border-slate-300 bg-slate-50/50 px-3.5 py-2.5 text-xs sm:text-sm font-mono font-bold text-slate-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
@@ -233,7 +242,7 @@ function PatientDashboardContent() {
                 disabled={loading}
                 className="rounded-xl bg-blue-600 px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-xs transition hover:bg-blue-700 active:scale-95 disabled:opacity-50"
               >
-                {loading ? "Checking..." : "Track Token"}
+                {loading ? t("tokenChecking") : t("trackTokenBtn")}
               </button>
             </form>
           </div>
@@ -254,14 +263,14 @@ function PatientDashboardContent() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider backdrop-blur-xs">
-                      Official Clinic Token
+                      {t("officialClinicToken")}
                     </span>
                     <div className="flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-xs">
                       <span className="relative flex h-2 w-2">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400"></span>
                       </span>
-                      <span>Live Status Synchronized</span>
+                      <span>{t("liveStatusSync")}</span>
                     </div>
                   </div>
 
@@ -274,7 +283,7 @@ function PatientDashboardContent() {
                         onClick={() => handleCopy(appointment.token)}
                         className="inline-flex items-center gap-1 rounded-lg bg-white/20 px-2.5 py-1 text-xs font-bold text-white transition hover:bg-white/30"
                       >
-                        {copied ? "✓ Copied to clipboard" : "📋 Copy Token"}
+                        {copied ? t("copiedToClipboard") : t("copyTokenBtn")}
                       </button>
                     </div>
                   </div>
@@ -282,19 +291,19 @@ function PatientDashboardContent() {
                   {/* Consultation Patient Details */}
                   <div className="mt-7 space-y-2.5 border-t border-white/20 pt-5 text-xs sm:text-sm">
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Patient Name:</span>
+                      <span className="text-blue-100">{t("patientNameLabel")}</span>
                       <span className="font-bold">{appointment.patient_name}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Specialty & Doctor:</span>
+                      <span className="text-blue-100">{t("specialtyDoctorLabel")}</span>
                       <span className="font-bold truncate max-w-[200px]">{appointment.department}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-blue-100">Scheduled Time:</span>
+                      <span className="text-blue-100">{t("scheduledTimeLabel")}</span>
                       <span className="font-bold">{appointment.appointment_date}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-blue-100">Queue Status:</span>
+                      <span className="text-blue-100">{t("queueStatusLabel")}</span>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                           currentStatus === "Completed"
@@ -304,9 +313,11 @@ function PatientDashboardContent() {
                             : "bg-amber-300 text-amber-950"
                         }`}
                       >
-                        {currentStatus === "In-Consultation"
-                          ? "● In-Consultation"
-                          : currentStatus}
+                        {currentStatus === "Completed"
+                          ? t("completed")
+                          : currentStatus === "In-Consultation"
+                          ? `● ${t("inConsultation")}`
+                          : t("waiting")}
                       </span>
                     </div>
                   </div>
@@ -317,18 +328,18 @@ function PatientDashboardContent() {
                       <span className="text-base">⏱️</span>
                       <span>
                         {currentStatus === "Completed"
-                          ? "Consultation Completed"
+                          ? t("waitCompleted")
                           : currentStatus === "In-Consultation"
-                          ? "Currently in Physician Consultation"
-                          : "Estimated Wait Time: ~10-15 Minutes"}
+                          ? t("waitInConsultation")
+                          : t("waitEstimated")}
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] text-blue-100">
                       {currentStatus === "Completed"
-                        ? "Your visit is complete. Follow-up instructions have been filed by your physician."
+                        ? t("waitCompletedDesc")
                         : currentStatus === "In-Consultation"
-                        ? "Please enter the assigned consultation suite when called."
-                        : "Current Queue Position: #2. Please remain in the patient reception lounge."}
+                        ? t("waitInConsultationDesc")
+                        : t("waitEstimatedDesc")}
                     </p>
                   </div>
                 </div>
@@ -338,7 +349,7 @@ function PatientDashboardContent() {
                     href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
                     className="block w-full rounded-2xl bg-white py-3 text-center text-xs sm:text-sm font-extrabold text-blue-900 shadow-md transition-all hover:bg-blue-50 active:scale-98"
                   >
-                    Update Intake & Symptoms →
+                    {t("updateIntakeBtn")}
                   </Link>
                 </div>
               </div>
@@ -349,14 +360,14 @@ function PatientDashboardContent() {
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <div>
                       <h3 className="text-base font-bold text-slate-900">
-                        Attached Consultation Documents
+                        {t("attachedDocuments")}
                       </h3>
                       <p className="text-xs text-slate-500">
-                        Securely stored in your confidential Cloudinary healthcare repository
+                        {t("vaultSubtitle")}
                       </p>
                     </div>
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-                      Patient Vault
+                      {t("patientVaultBadge")}
                     </span>
                   </div>
 
@@ -370,11 +381,11 @@ function PatientDashboardContent() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-slate-900">
-                              Attached: Prescription
+                              {t("attachedPrescription")}
                             </p>
                             <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              Encrypted & Verified
+                              {t("encryptedVerified")}
                             </span>
                           </div>
                         </div>
@@ -384,7 +395,7 @@ function PatientDashboardContent() {
                             onClick={() => setPreviewDocModal(rxUrl)}
                             className="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-blue-700"
                           >
-                            Preview
+                            {t("preview")}
                           </button>
                           <a
                             href={rxUrl}
@@ -392,18 +403,18 @@ function PatientDashboardContent() {
                             rel="noopener noreferrer"
                             className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
                           >
-                            Download ↗
+                            {t("download")}
                           </a>
                         </div>
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
-                        <span>No previous prescriptions attached.</span>
+                        <span>{t("noRxAttached")}</span>
                         <Link
                           href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
                           className="font-bold text-blue-600 hover:underline"
                         >
-                          + Attach Rx
+                          {t("attachRxBtn")}
                         </Link>
                       </div>
                     )}
@@ -417,11 +428,11 @@ function PatientDashboardContent() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-slate-900">
-                              Attached: Diagnostic Report
+                              {t("attachedReport")}
                             </p>
                             <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1 mt-0.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                              Encrypted & Verified
+                              {t("encryptedVerified")}
                             </span>
                           </div>
                         </div>
@@ -431,7 +442,7 @@ function PatientDashboardContent() {
                             onClick={() => setPreviewDocModal(reportUrl)}
                             className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
                           >
-                            Preview
+                            {t("preview")}
                           </button>
                           <a
                             href={reportUrl}
@@ -439,18 +450,18 @@ function PatientDashboardContent() {
                             rel="noopener noreferrer"
                             className="rounded-xl border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
                           >
-                            Download ↗
+                            {t("download")}
                           </a>
                         </div>
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-xs text-slate-400 flex items-center justify-between">
-                        <span>No lab reports or scans attached.</span>
+                        <span>{t("noReportAttached")}</span>
                         <Link
                           href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
                           className="font-bold text-blue-600 hover:underline"
                         >
-                          + Attach Report
+                          {t("attachReportBtn")}
                         </Link>
                       </div>
                     )}
@@ -460,10 +471,10 @@ function PatientDashboardContent() {
                 <div className="mt-8 rounded-2xl bg-slate-50 p-4 border border-slate-100 text-xs text-slate-600">
                   <div className="flex items-center gap-2 font-bold text-slate-900">
                     <span>🏥</span>
-                    <span>Clinic Patient Notice</span>
+                    <span>{t("clinicPatientNotice")}</span>
                   </div>
                   <p className="mt-1 leading-relaxed text-[11px] text-slate-500">
-                    Your uploaded files are delivered directly to your attending physician&apos;s protected clinical workstation. Please have your token ready when entering the examination room.
+                    {t("clinicNotice")}
                   </p>
                 </div>
               </div>
@@ -471,16 +482,16 @@ function PatientDashboardContent() {
           ) : (
             <div className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-slate-50/50 p-10 text-center">
               <span className="text-4xl">🎟️</span>
-              <h3 className="mt-3 text-base font-bold text-slate-900">No Active Token Loaded</h3>
+              <h3 className="mt-3 text-base font-bold text-slate-900">{t("noActiveTokenTitle")}</h3>
               <p className="mt-1 text-xs text-slate-500 max-w-md mx-auto">
-                Enter your appointment token above to monitor your consultation position, or book a new appointment to generate one.
+                {t("noActiveTokenDesc")}
               </p>
               <div className="mt-5">
                 <Link
                   href="/appointment"
                   className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700"
                 >
-                  Book New Appointment Now
+                  {t("bookNewAppointmentNow")}
                 </Link>
               </div>
             </div>
@@ -492,7 +503,7 @@ function PatientDashboardContent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
             <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
               <div className="flex items-center justify-between border-b border-slate-100 p-4">
-                <h3 className="text-sm font-bold text-slate-900">Document Vault Viewer</h3>
+                <h3 className="text-sm font-bold text-slate-900">{t("docVaultViewer")}</h3>
                 <button
                   onClick={() => setPreviewDocModal(null)}
                   className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
