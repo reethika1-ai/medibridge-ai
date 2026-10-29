@@ -54,6 +54,7 @@ export default function HospitalPortalClient({
   );
   const [appointments, setAppointments] = useState<AppointmentItem[]>(initialAppointments);
   const [updatingToken, setUpdatingToken] = useState<string | null>(null);
+  const [sirenMuted, setSirenMuted] = useState<boolean>(false);
 
   // Track acknowledged red alerts to fire siren on new alerts
   const seenEmergenciesRef = useRef<Set<string>>(
@@ -102,6 +103,7 @@ export default function HospitalPortalClient({
           });
 
           if (hasNewEmergency) {
+            setSirenMuted(false);
             playEmergencySiren();
           }
 
@@ -118,6 +120,21 @@ export default function HospitalPortalClient({
       clearInterval(intervalId);
     };
   }, []);
+
+  // Persistent two-tone ER siren loop when Red Alerts exist and alarm is unmuted
+  useEffect(() => {
+    if (redAlertTotal === 0 || sirenMuted) return;
+
+    // Trigger cycle immediately
+    playEmergencySiren();
+
+    // Replay every 3.5 seconds persistently while Red Alerts are active
+    const sirenTimer = setInterval(() => {
+      playEmergencySiren();
+    }, 3500);
+
+    return () => clearInterval(sirenTimer);
+  }, [redAlertTotal, sirenMuted]);
 
   // Filter for Ambulance Fleet
   const ambulanceAppointments = appointments.filter((apt) => {
@@ -258,7 +275,7 @@ export default function HospitalPortalClient({
           </button>
         </div>
 
-        {/* Global Trauma Alert Indicator & Siren Test Button */}
+        {/* Global Trauma Alert Indicator & Persistent Siren Controls */}
         <div className="flex items-center gap-3 px-3">
           {redAlertTotal > 0 && (
             <div className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-red-950/50 px-3 py-1.5 text-xs font-black text-red-200 animate-pulse">
@@ -267,16 +284,38 @@ export default function HospitalPortalClient({
             </div>
           )}
 
-          {/* Two-tone Emergency Siren Test Button */}
-          <button
-            type="button"
-            onClick={playEmergencySiren}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-950/60 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-900/60 transition active:scale-95 shadow-sm"
-            title="Test ER Hospital Siren (960 Hz <-> 770 Hz)"
-          >
-            <span className="animate-bounce">🔊</span>
-            <span>Test ER Siren</span>
-          </button>
+          {redAlertTotal > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (!sirenMuted) {
+                  setSirenMuted(true);
+                } else {
+                  setSirenMuted(false);
+                  playEmergencySiren();
+                }
+              }}
+              className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-1.5 text-xs font-black shadow-md transition-all active:scale-95 ${
+                !sirenMuted
+                  ? "bg-red-600 text-white animate-pulse ring-2 ring-red-400 shadow-red-600/40"
+                  : "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+              }`}
+              title={!sirenMuted ? "Click to Silence ER Siren" : "Click to Unmute ER Siren"}
+            >
+              <span>{!sirenMuted ? "🚨" : "🔇"}</span>
+              <span>{!sirenMuted ? "SIREN SOUNDING (Silence)" : "Siren Muted (Unmute)"}</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={playEmergencySiren}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/50 bg-red-950/60 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-900/60 transition active:scale-95 shadow-sm"
+              title="Test ER Hospital Siren (960 Hz <-> 770 Hz)"
+            >
+              <span className="animate-bounce">🔊</span>
+              <span>Test ER Siren</span>
+            </button>
+          )}
         </div>
       </div>
 

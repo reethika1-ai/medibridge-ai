@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
+import { playEmergencySiren } from "@/components/HospitalPortalClient";
 
 interface EmergencyModalProps {
   isOpen: boolean;
@@ -126,12 +127,16 @@ export default function EmergencyModal({
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Ambulance dispatch request failed");
+      }
       setActiveTelemetry(data);
       setStep("AMBULANCE_ACTIVE");
+      playEmergencySiren();
     } catch {
       setActiveTelemetry({
         token: `EMG-AMB-${Math.floor(100000 + Math.random() * 900000)}`,
-        ambulance_id: "AV-AMB-09",
+        ambulance_id: "Smart AV-Ambulance #MED-09",
         unit_assigned: "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)",
         latitude,
         longitude,
@@ -140,6 +145,7 @@ export default function EmergencyModal({
         mode: "AMBULANCE",
       });
       setStep("AMBULANCE_ACTIVE");
+      playEmergencySiren();
     } finally {
       setIsSubmitting(false);
     }
@@ -162,8 +168,12 @@ export default function EmergencyModal({
         }),
       });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Gate mobilization request failed");
+      }
       setActiveTelemetry(data);
       setStep("SELF_ACTIVE");
+      playEmergencySiren();
     } catch {
       setActiveTelemetry({
         token: `EMG-GATE-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -172,6 +182,7 @@ export default function EmergencyModal({
         mode: "SELF_ARRIVAL",
       });
       setStep("SELF_ACTIVE");
+      playEmergencySiren();
     } finally {
       setIsSubmitting(false);
     }

@@ -7,6 +7,7 @@ export async function POST(req: Request) {
     const mode = body.mode === "SELF_ARRIVAL" ? "SELF_ARRIVAL" : "AMBULANCE";
     const randNum = Math.floor(100000 + Math.random() * 900000);
     const nowIso = new Date().toISOString();
+    const today = nowIso.split("T")[0]; // Valid Postgres date YYYY-MM-DD
 
     const lat =
       body.latitude !== undefined && body.latitude !== null
@@ -37,11 +38,11 @@ export async function POST(req: Request) {
 
     const symptoms =
       mode === "AMBULANCE"
-        ? `[AMBULANCE DISPATCHED] Unit #MED-09 En Route to: ${location || "GPS Pin: " + lat + ", " + lon}. Critical roadside casualty triage required.`
-        : `[SELF-ARRIVAL GATE 1] Patient arriving via private vehicle (${notes || "Emergency Transit"}). Immediate stretcher, nurse, and Trauma Bay 1 readiness required.`;
+        ? `[AMBULANCE DISPATCHED] Unit #MED-09 deployed to: ${location || `GPS (${lat},${lon})`}. Immediate trauma response required.`
+        : `[SELF-ARRIVAL GATE 1] Private vehicle inbound: ${notes || "Emergency Transit"}. Mobilize stretcher, Nurse Stephanie, and Trauma Bay 1.`;
 
     const clinicalSummaryObj = {
-      mode,
+      mode: mode || "AMBULANCE",
       location: location || `${lat}, ${lon}`,
       ambulance_id: "Smart AV-Ambulance #MED-09",
       unit_assigned:
@@ -49,104 +50,47 @@ export async function POST(req: Request) {
           ? "Smart AV-Ambulance #MED-09 (Autonomous Trauma Fleet)"
           : "Gate 1 ER Rapid Mobilization Unit",
       eta_mins: 5,
-      nurse_assigned: "Staff Nurse Stephanie (Trauma Bay 1)",
-      notes: notes || "Priority Gate Mobilization",
+      nurse_assigned: "Staff Nurse Stephanie",
+      vehicle_notes: notes || "Private Transit",
+      notes: notes || "Private Transit",
       dispatched_at: nowIso,
       urgency_level: "CRITICAL_RED_ALERT",
       urgent_flag: true,
       status: "Waiting",
+      age: 30,
+      gender: "Emergency",
+      phone: "108-EMERGENCY",
+      specialty: "Emergency & Trauma Care",
       chief_complaint: patientName,
       clinical_observations: symptoms,
     };
     const clinicalSummaryJson = JSON.stringify(clinicalSummaryObj);
 
-    // Full payload with all target columns
-    const fullPayload: Record<string, any> = {
+    // Verified standard columns in Supabase appointments table
+    const verifiedPayload = {
       token,
       patient_name: patientName,
-      age: 0,
-      gender: "Emergency Casualty",
-      phone: "EMERGENCY_SOS",
-      specialty: "Emergency & Trauma Care",
       department: "Emergency & Trauma Care",
-      appointment_date: "IMMEDIATE EMERGENCY DISPATCH",
-      urgency_level: "CRITICAL_RED_ALERT",
-      urgent: true,
-      status: "Waiting",
+      appointment_date: today,
       symptoms,
       summary: clinicalSummaryJson,
-      clinical_summary: clinicalSummaryJson,
-      created_at: nowIso,
+      urgent: true,
     };
 
     let { data, error } = await supabase
       .from("appointments")
-      .insert(fullPayload)
+      .insert(verifiedPayload)
       .select()
       .single();
-
-    // Fallback if some columns don't exist in Supabase table schema
-    if (
-      error &&
-      (error.message?.includes("column") ||
-        error.code === "PGRST204" ||
-        error.code === "42703")
-    ) {
-      console.warn(
-        "Retrying emergency insert with core columns due to missing column:",
-        error.message
-      );
-      const corePayload: Record<string, any> = {
-        token,
-        patient_name: patientName,
-        age: 0,
-        gender: "Emergency Casualty",
-        phone: "EMERGENCY_SOS",
-        department: "Emergency & Trauma Care",
-        appointment_date: "IMMEDIATE EMERGENCY DISPATCH",
-        symptoms,
-        summary: clinicalSummaryJson,
-        urgent: true,
-      };
-
-      const fallbackRes = await supabase
-        .from("appointments")
-        .insert(corePayload)
-        .select()
-        .single();
-      data = fallbackRes.data;
-      error = fallbackRes.error;
-
-      // If still error, try minimal payload
-      if (
-        error &&
-        (error.message?.includes("column") ||
-          error.code === "PGRST204" ||
-          error.code === "42703")
-      ) {
-        const minimalPayload: Record<string, any> = {
-          token,
-          patient_name: patientName,
-          department: "Emergency & Trauma Care",
-          appointment_date: "IMMEDIATE EMERGENCY DISPATCH",
-          symptoms,
-          summary: clinicalSummaryJson,
-          urgent: true,
-        };
-        const minimalRes = await supabase
-          .from("appointments")
-          .insert(minimalPayload)
-          .select()
-          .single();
-        data = minimalRes.data;
-        error = minimalRes.error;
-      }
-    }
 
     if (error) {
       console.error("Emergency Supabase Error:", error);
       return NextResponse.json(
-        { error: "Emergency Supabase Error: " + error.message, details: error },
+        {
+          error: "Emergency Supabase Error: " + error.message,
+          code: error.code,
+          details: error,
+        },
         { status: 500 }
       );
     }
