@@ -121,6 +121,9 @@ export default function HospitalPortalClient({
     };
   }, []);
 
+  // Track total red alerts across queue
+  const redAlertTotal = appointments.filter((a) => isRedAlert(a)).length;
+
   // Persistent two-tone ER siren loop when Red Alerts exist and alarm is unmuted
   useEffect(() => {
     if (redAlertTotal === 0 || sirenMuted) return;
@@ -205,8 +208,6 @@ export default function HospitalPortalClient({
       };
     });
   }
-
-  const redAlertTotal = appointments.filter((a) => isRedAlert(a)).length;
 
   return (
     <div className="space-y-6">
