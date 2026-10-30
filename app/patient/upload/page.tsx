@@ -4,6 +4,7 @@ import { Suspense, useState, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import { DEMO_SAMPLE_PRESCRIPTION, DEMO_SAMPLE_XRAY } from "@/lib/cloudinary";
 
 type BiomarkerItem = {
   name?: string;
@@ -100,6 +101,38 @@ function PatientUploadContent() {
     setErrorMsg("");
     setReportFile(file);
   }
+
+  const handleLoadSamplePrescription = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      const res = await fetch(DEMO_SAMPLE_PRESCRIPTION);
+      const blob = await res.blob();
+      const file = new File([blob], "sample_prescription.jpg", { type: "image/jpeg" });
+      handleRxSelect(file);
+    } catch {
+      const fallbackFile = new File(["sample_rx"], "sample_prescription.jpg", { type: "image/jpeg" });
+      handleRxSelect(fallbackFile);
+    }
+  };
+
+  const handleLoadSampleXray = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      const res = await fetch(DEMO_SAMPLE_XRAY);
+      const blob = await res.blob();
+      const file = new File([blob], "sample_radiograph_xray.jpg", { type: "image/jpeg" });
+      handleReportSelect(file);
+    } catch {
+      const fallbackFile = new File(["sample_xray"], "sample_radiograph_xray.jpg", { type: "image/jpeg" });
+      handleReportSelect(fallbackFile);
+    }
+  };
 
   async function uploadFileToCloudinary(file: File, docType: "prescription" | "report" | "blood_report") {
     const formData = new FormData();
@@ -327,6 +360,36 @@ function PatientUploadContent() {
                 Choose any combination of files. Sarvam AI OCR automatically parses handwritten notes and laboratory parameters.
               </p>
 
+              {/* Instant Hackathon Triggers */}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-teal-200/80 bg-teal-50/70 p-3 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-100 text-teal-800 text-xs font-black">
+                    ⚡
+                  </span>
+                  <span className="text-xs font-bold text-teal-950">
+                    Instant Hackathon Evaluation Samples:
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadSamplePrescription}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-white px-3 py-1 text-xs font-black text-teal-800 shadow-xs hover:bg-teal-100 transition active:scale-95"
+                  >
+                    <span>📄</span>
+                    <span>Test Sample Prescription</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLoadSampleXray}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-white px-3 py-1 text-xs font-black text-indigo-800 shadow-xs hover:bg-indigo-50 transition active:scale-95"
+                  >
+                    <span>🩻</span>
+                    <span>Test Sample X-Ray</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 {/* Slot 1: Previous Prescription */}
                 <div className="rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-blue-50/20 to-slate-50/40 p-5 shadow-xs">
@@ -338,9 +401,18 @@ function PatientUploadContent() {
                         <p className="text-[10px] text-slate-400">Doctor Rx notes</p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-                      Rx OCR
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleLoadSamplePrescription}
+                        className="rounded-full bg-blue-100/70 hover:bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60 transition"
+                      >
+                        + Sample Rx
+                      </button>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60">
+                        Rx OCR
+                      </span>
+                    </div>
                   </div>
 
                   <div
@@ -488,9 +560,18 @@ function PatientUploadContent() {
                         <p className="text-[10px] text-slate-400">X-Ray, CT, MRI, USG</p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
-                      Imaging
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleLoadSampleXray}
+                        className="rounded-full bg-indigo-100/70 hover:bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60 transition"
+                      >
+                        + Sample X-Ray
+                      </button>
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                        Imaging
+                      </span>
+                    </div>
                   </div>
 
                   <div

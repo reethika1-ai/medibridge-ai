@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/context/LanguageContext";
 import OtpAuthModal from "@/components/OtpAuthModal";
 import { sendBookingConfirmationSms, dispatchBookingSms } from "@/lib/sms";
+import { DEMO_SAMPLE_PRESCRIPTION, DEMO_SAMPLE_XRAY } from "@/lib/cloudinary";
 
 const departmentDoctors: Record<string, string[]> = {
   Cardiology: [
@@ -310,6 +311,38 @@ export default function AppointmentPage() {
     setErrorMsg("");
     setReportFile(file);
   }
+
+  const handleLoadSamplePrescription = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      const res = await fetch(DEMO_SAMPLE_PRESCRIPTION);
+      const blob = await res.blob();
+      const file = new File([blob], "sample_prescription.jpg", { type: "image/jpeg" });
+      handlePrescriptionSelect(file);
+    } catch {
+      const fallbackFile = new File(["sample_rx"], "sample_prescription.jpg", { type: "image/jpeg" });
+      handlePrescriptionSelect(fallbackFile);
+    }
+  };
+
+  const handleLoadSampleXray = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    try {
+      const res = await fetch(DEMO_SAMPLE_XRAY);
+      const blob = await res.blob();
+      const file = new File([blob], "sample_radiograph_xray.jpg", { type: "image/jpeg" });
+      handleReportSelect(file);
+    } catch {
+      const fallbackFile = new File(["sample_xray"], "sample_radiograph_xray.jpg", { type: "image/jpeg" });
+      handleReportSelect(fallbackFile);
+    }
+  };
 
   async function uploadToCloudinary(
     file: File,
@@ -917,6 +950,36 @@ export default function AppointmentPage() {
                 </p>
               </div>
 
+              {/* Hackathon 1-Click Evaluation Triggers */}
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-teal-200/80 bg-teal-50/70 p-3 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-100 text-teal-800 text-xs font-black">
+                    ⚡
+                  </span>
+                  <span className="text-xs font-bold text-teal-950">
+                    Instant Hackathon Evaluation Samples:
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleLoadSamplePrescription}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-white px-3 py-1 text-xs font-black text-teal-800 shadow-xs hover:bg-teal-100 transition active:scale-95"
+                  >
+                    <span>📄</span>
+                    <span>Test Sample Prescription</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLoadSampleXray}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-indigo-300 bg-white px-3 py-1 text-xs font-black text-indigo-800 shadow-xs hover:bg-indigo-50 transition active:scale-95"
+                  >
+                    <span>🩻</span>
+                    <span>Test Sample X-Ray</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="grid gap-6 md:grid-cols-3">
                 {/* 1. Previous Prescriptions Box */}
                 <div className="flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-blue-50/20 to-slate-50/40 p-5 shadow-xs backdrop-blur-sm transition-all duration-200 hover:border-blue-400 hover:shadow-md">
@@ -935,9 +998,18 @@ export default function AppointmentPage() {
                           </span>
                         </div>
                       </div>
-                      <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60">
-                        Sarvam OCR
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleLoadSamplePrescription}
+                          className="rounded-full bg-blue-100/70 hover:bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60 transition"
+                        >
+                          + Sample Rx
+                        </button>
+                        <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold text-blue-700 border border-blue-200/60">
+                          Sarvam OCR
+                        </span>
+                      </div>
                     </div>
 
                     <div
@@ -1127,9 +1199,18 @@ export default function AppointmentPage() {
                           </span>
                         </div>
                       </div>
-                      <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
-                        Imaging / X-Ray
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleLoadSampleXray}
+                          className="rounded-full bg-indigo-100/70 hover:bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60 transition"
+                        >
+                          + Sample X-Ray
+                        </button>
+                        <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                          Imaging / X-Ray
+                        </span>
+                      </div>
                     </div>
 
                     <div

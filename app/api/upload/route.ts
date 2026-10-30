@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { extractOcrFromUrl } from "@/lib/sarvam";
-import { getOcrPreprocessedUrl, getMedicalPipelineBundle } from "@/lib/cloudinary";
+import { getOcrEnhancedUrl, getOcrPreprocessedUrl, getMedicalPipelineBundle } from "@/lib/cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       const filename = docType === "prescription" ? "prescription.png" : "medical_report.png";
       const ocrTargetUrl =
         docType === "prescription"
-          ? getOcrPreprocessedUrl(uploadResponse.secure_url)
+          ? getOcrEnhancedUrl(uploadResponse.secure_url)
           : uploadResponse.secure_url;
 
       extractedText = await Promise.race([

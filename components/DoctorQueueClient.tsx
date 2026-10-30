@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { dispatchEarlyMobilizationSms } from "@/lib/sms";
 import {
-  getDicomHighContrastUrl,
-  getDicomNegativeUrl,
-  getHipaaWatermarkedUrl,
-  getPdfThumbnailUrl,
+  getRadiographModeUrl,
+  RadiographMode,
+  DEMO_SAMPLE_PRESCRIPTION,
+  DEMO_SAMPLE_XRAY,
+  getPdfPageThumbnailUrl,
 } from "@/lib/cloudinary";
 
 export type ExtractedMedication = {
@@ -179,7 +180,7 @@ export default function DoctorQueueClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [ehrExportSuccess, setEhrExportSuccess] = useState<string | null>(null);
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
-  const [dicomFilter, setDicomFilter] = useState<"standard" | "contrast" | "inverted" | "hipaa">("standard");
+  const [dicomFilter, setDicomFilter] = useState<RadiographMode>("standard");
 
   // Early Queue Mobilization state
   const [earlyMobilizeModalOpen, setEarlyMobilizeModalOpen] = useState(false);
@@ -1159,6 +1160,50 @@ export default function DoctorQueueClient({
                 ⚖️ <strong>CLINICAL DECISION SUPPORT NOTICE (AI SAFETY GUARDRAIL):</strong> MediBridge AI models provide preliminary synthesis for triage acceleration only. Machine learning models are subject to margin of error. Clinicians must cross-verify all extracted medications and radiological impressions against the original source documents before prescribing.
               </div>
 
+              {/* Cloudinary Medical Pipeline Hackathon Evaluation Triggers */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-teal-950/50 p-3.5 border border-teal-500/30 shadow-md">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-teal-500/20 text-teal-300 font-black text-xs">
+                    ⚡
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                      <span>Cloudinary Medical Intelligence Vault</span>
+                      <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-teal-300 border border-teal-500/30">
+                        Zero-Upload Transforms
+                      </span>
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      Instant 1-click test triggers for 4-mode radiographic viewer and OCR pre-processing
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewDocModal(DEMO_SAMPLE_PRESCRIPTION);
+                      setDicomFilter("standard");
+                    }}
+                    className="rounded-xl border border-teal-400/50 bg-teal-950/80 hover:bg-teal-900 px-3 py-1.5 text-xs font-black text-teal-300 transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span>📄</span>
+                    <span>Test Sample Prescription</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreviewDocModal(DEMO_SAMPLE_XRAY);
+                      setDicomFilter("high_contrast");
+                    }}
+                    className="rounded-xl border border-indigo-400/50 bg-indigo-950/80 hover:bg-indigo-900 px-3 py-1.5 text-xs font-black text-indigo-300 transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span>🩻</span>
+                    <span>Test Sample X-Ray</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Patient Demographics Banner */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 rounded-2xl bg-slate-950/70 p-4 border border-slate-800 text-xs">
                 <div>
@@ -1331,31 +1376,58 @@ export default function DoctorQueueClient({
                       </div>
 
                       {/* Action Buttons for Imaging */}
-                      {selectedReportUrl && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          <button
-                            onClick={() => setPreviewDocModal(selectedReportUrl)}
-                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2.5 font-bold text-white text-xs transition active:scale-95 shadow-sm"
-                          >
-                            <span>👁️</span>
-                            <span>Quick Inspect Scan / Report</span>
-                          </button>
-                          <a
-                            href={selectedReportUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download
-                            className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/60 hover:bg-indigo-900/60 px-3.5 py-2.5 font-bold text-indigo-200 text-xs transition active:scale-95"
-                          >
-                            <span>📥</span>
-                            <span>Download Original DICOM/Image</span>
-                          </a>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {selectedReportUrl && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setPreviewDocModal(selectedReportUrl);
+                                setDicomFilter("standard");
+                              }}
+                              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2.5 font-bold text-white text-xs transition active:scale-95 shadow-sm"
+                            >
+                              <span>👁️</span>
+                              <span>Quick Inspect Scan / Report</span>
+                            </button>
+                            <a
+                              href={selectedReportUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/60 hover:bg-indigo-900/60 px-3.5 py-2.5 font-bold text-indigo-200 text-xs transition active:scale-95"
+                            >
+                              <span>📥</span>
+                              <span>Download Original DICOM/Image</span>
+                            </a>
+                          </>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewDocModal(DEMO_SAMPLE_XRAY);
+                            setDicomFilter("high_contrast");
+                          }}
+                          className="flex items-center justify-center gap-1.5 rounded-xl border border-indigo-400/50 bg-indigo-950/80 hover:bg-indigo-900 px-3.5 py-2.5 font-bold text-indigo-300 text-xs transition active:scale-95"
+                        >
+                          <span>🩻</span>
+                          <span>Test Sample X-Ray</span>
+                        </button>
+                      </div>
                     </>
                   ) : (
-                    <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center">
-                      No radiological imaging study or scan detected in this intake profile.
+                    <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center space-y-2">
+                      <p>No radiological imaging study or scan detected in this intake profile.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewDocModal(DEMO_SAMPLE_XRAY);
+                          setDicomFilter("high_contrast");
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-400/50 bg-indigo-950/80 hover:bg-indigo-900 px-3 py-1.5 text-xs font-bold text-indigo-300 transition active:scale-95"
+                      >
+                        <span>🩻</span>
+                        <span>Test Sample X-Ray (4-Mode Radiographic Viewer)</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1363,16 +1435,29 @@ export default function DoctorQueueClient({
 
               {/* TIER 4: 💊 PREVIOUS MEDICATIONS REGIMEN (via Sarvam AI OCR) */}
               <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-cyan-950/30 p-5 shadow-inner">
-                <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/20 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">💊</span>
                     <span className="text-xs font-black uppercase tracking-wider text-cyan-300">
                       Previous Medications Regimen (Sarvam AI OCR)
                     </span>
                   </div>
-                  <span className="rounded-full bg-cyan-500/20 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
-                    Handwritten Rx Digitized
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewDocModal(selectedPrescriptionUrl || DEMO_SAMPLE_PRESCRIPTION);
+                        setDicomFilter("standard");
+                      }}
+                      className="rounded-full bg-cyan-950/80 border border-cyan-400/50 px-2.5 py-1 text-[11px] font-black text-cyan-300 hover:bg-cyan-900 transition flex items-center gap-1 shadow-xs active:scale-95"
+                    >
+                      <span>📄</span>
+                      <span>{selectedPrescriptionUrl ? "Quick Inspect Rx" : "Test Sample Prescription"}</span>
+                    </button>
+                    <span className="rounded-full bg-cyan-500/20 border border-cyan-400/30 px-2.5 py-0.5 text-[10px] font-bold text-cyan-300">
+                      Handwritten Rx Digitized
+                    </span>
+                  </div>
                 </div>
 
                 <div className="mt-4">
@@ -1639,17 +1724,9 @@ export default function DoctorQueueClient({
 
       {/* Quick Modal Viewer with Cloudinary Medical Pipeline Filters */}
       {previewDocModal && (() => {
-        let activeUrl = previewDocModal;
-        if (dicomFilter === "contrast") {
-          activeUrl = getDicomHighContrastUrl(previewDocModal);
-        } else if (dicomFilter === "inverted") {
-          activeUrl = getDicomNegativeUrl(previewDocModal);
-        } else if (dicomFilter === "hipaa") {
-          activeUrl = getHipaaWatermarkedUrl(previewDocModal);
-        }
-
+        const activeUrl = getRadiographModeUrl(previewDocModal, dicomFilter);
         const isPdf = previewDocModal.toLowerCase().endsWith(".pdf");
-        const pdfThumbnail = isPdf ? getPdfThumbnailUrl(previewDocModal) : null;
+        const pdfThumbnail = isPdf ? getPdfPageThumbnailUrl(previewDocModal) : null;
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md animate-fadeIn">
@@ -1663,23 +1740,23 @@ export default function DoctorQueueClient({
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <span>Radiology & Medical Document Inspector</span>
                       <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[10px] font-black text-teal-300 border border-teal-500/30">
-                        Cloudinary Pipeline Active
+                        Cloudinary 4-Mode Viewer
                       </span>
                     </h3>
                     <p className="text-[11px] text-slate-400">
-                      DICOM contrast enhancement · HIPAA confidentiality watermarking · Multi-page rasterization
+                      High-Contrast DICOM · Inverted film · HIPAA watermark · Instant rasterization
                     </p>
                   </div>
                 </div>
 
-                {/* Dynamic Filters Bar */}
+                {/* 4-Mode Radiographic Filter Controls */}
                 <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
                   <button
                     type="button"
                     onClick={() => setDicomFilter("standard")}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
                       dicomFilter === "standard"
-                        ? "bg-blue-600 text-white"
+                        ? "bg-blue-600 text-white shadow-xs"
                         : "text-slate-400 hover:text-white"
                     }`}
                   >
@@ -1687,10 +1764,10 @@ export default function DoctorQueueClient({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDicomFilter("contrast")}
+                    onClick={() => setDicomFilter("high_contrast")}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
-                      dicomFilter === "contrast"
-                        ? "bg-amber-500 text-slate-950 font-black"
+                      dicomFilter === "high_contrast"
+                        ? "bg-amber-500 text-slate-950 font-black shadow-xs"
                         : "text-amber-400 hover:text-amber-300"
                     }`}
                   >
@@ -1702,7 +1779,7 @@ export default function DoctorQueueClient({
                     onClick={() => setDicomFilter("inverted")}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
                       dicomFilter === "inverted"
-                        ? "bg-teal-500 text-slate-950 font-black"
+                        ? "bg-teal-500 text-slate-950 font-black shadow-xs"
                         : "text-teal-400 hover:text-teal-300"
                     }`}
                   >
@@ -1711,10 +1788,10 @@ export default function DoctorQueueClient({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDicomFilter("hipaa")}
+                    onClick={() => setDicomFilter("hipaa_watermark")}
                     className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
-                      dicomFilter === "hipaa"
-                        ? "bg-rose-600 text-white"
+                      dicomFilter === "hipaa_watermark"
+                        ? "bg-rose-600 text-white shadow-xs font-black"
                         : "text-rose-400 hover:text-rose-300"
                     }`}
                   >
@@ -1723,7 +1800,35 @@ export default function DoctorQueueClient({
                   </button>
                 </div>
 
+                {/* Instant Evaluation Samples & Controls */}
                 <div className="flex items-center gap-2">
+                  <div className="hidden lg:flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDocModal(DEMO_SAMPLE_PRESCRIPTION)}
+                      className={`rounded-lg px-2 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                        previewDocModal === DEMO_SAMPLE_PRESCRIPTION
+                          ? "bg-teal-600 text-white"
+                          : "text-teal-400 hover:bg-slate-800"
+                      }`}
+                    >
+                      <span>📄</span>
+                      <span>Sample Rx</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewDocModal(DEMO_SAMPLE_XRAY)}
+                      className={`rounded-lg px-2 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                        previewDocModal === DEMO_SAMPLE_XRAY
+                          ? "bg-indigo-600 text-white"
+                          : "text-indigo-400 hover:bg-slate-800"
+                      }`}
+                    >
+                      <span>🩻</span>
+                      <span>Sample X-Ray</span>
+                    </button>
+                  </div>
+
                   <a
                     href={activeUrl}
                     target="_blank"
@@ -1752,6 +1857,13 @@ export default function DoctorQueueClient({
                     src={activeUrl.replace(/\.pdf$/i, ".png")}
                     alt="Rasterized PDF with Filter"
                     className="max-h-full max-w-full object-contain rounded-xl border border-slate-800 shadow-2xl"
+                  />
+                ) : !isPdf ? (
+                  <img
+                    key={activeUrl}
+                    src={activeUrl}
+                    alt="Medical Document Viewer"
+                    className="max-h-full max-w-full object-contain rounded-2xl border border-slate-800 shadow-2xl transition-all duration-300"
                   />
                 ) : (
                   <iframe

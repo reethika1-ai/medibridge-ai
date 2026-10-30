@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractPrescriptionAndReportOCR, extractHandwrittenText } from "@/lib/sarvam";
+import { getOcrEnhancedUrl } from "@/lib/cloudinary";
 
 export type ExtractedMedication = {
   name: string;
@@ -242,8 +243,9 @@ export async function processClinicalTriage(body: {
 
   if ((prescriptionUrl && !prescriptionText) || (reportUrl && !reportText)) {
     try {
+      const ocrPrescriptionUrl = prescriptionUrl ? getOcrEnhancedUrl(prescriptionUrl) : null;
       const ocrResults = await extractPrescriptionAndReportOCR(
-        !prescriptionText ? prescriptionUrl : null,
+        !prescriptionText ? (ocrPrescriptionUrl || prescriptionUrl) : null,
         !reportText ? reportUrl : null
       );
       if (!prescriptionText) prescriptionText = ocrResults.prescriptionText;
