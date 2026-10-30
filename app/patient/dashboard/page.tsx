@@ -22,11 +22,19 @@ type AppointmentRecord = {
   report_public_id: string | null;
   created_at: string;
   status?: string;
+  payment_mode?: "ONLINE" | "OFFLINE" | string;
+  early_mobilization?: boolean;
+  refund_amount?: number | null;
+  refund_status?: string | null;
   parsed_summary?: {
     status?: string;
+    payment_mode?: "ONLINE" | "OFFLINE" | string;
+    early_mobilization?: boolean;
+    refund_amount?: number | null;
+    refund_status?: string | null;
     prescription_url?: string | null;
     report_url?: string | null;
-  blood_report_url?: string | null;
+    blood_report_url?: string | null;
     document_url?: string | null;
   } | null;
 };
@@ -51,6 +59,75 @@ function PatientDashboardContent() {
     max_capacity: number;
     consultation_eta: string;
   } | null>(null);
+
+  const [cancelModalOpen, setCancelModalOpen] = useState<boolean>(false);
+  const [cancelling, setCancelling] = useState<boolean>(false);
+  const [refundSuccessMsg, setRefundSuccessMsg] = useState<string>("");
+
+  function getHoursToAppointment(appointmentDateStr?: string | null): number {
+    if (!appointmentDateStr) return 0;
+    try {
+      const parts = appointmentDateStr.split("@").map((s) => s.trim());
+      const datePart = parts[0];
+      const timePart = parts[1] || "";
+      const startTime = timePart.split("-")[0].trim();
+      const match = startTime.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      let hours = 9;
+      let minutes = 0;
+      if (match) {
+        hours = parseInt(match[1], 10);
+        minutes = parseInt(match[2], 10);
+        const mer = (match[3] || "").toUpperCase();
+        if (mer === "PM" && hours < 12) hours += 12;
+        if (mer === "AM" && hours === 12) hours = 0;
+      }
+      const aptDate = new Date(`${datePart}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`);
+      const now = new Date();
+      return (aptDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    } catch {
+      return 0;
+    }
+  }
+
+  async function handleCancelAppointment() {
+    if (!appointment) return;
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: appointment.token,
+          status: "Cancelled",
+          refund_amount: 375,
+          refund_status: "REFUNDED_75_PERCENT",
+        }),
+      });
+
+      if (res.ok) {
+        setAppointment((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "Cancelled",
+                refund_amount: 375,
+                refund_status: "REFUNDED_75_PERCENT",
+              }
+            : null
+        );
+        setRefundSuccessMsg(
+          "✓ Appointment Cancelled. 75% refund (₹375 of ₹500) initiated to your original payment source. Expected credit in 2-3 business days."
+        );
+        setCancelModalOpen(false);
+      } else {
+        setErrorMsg("Failed to cancel appointment. Please retry or contact support.");
+      }
+    } catch {
+      setErrorMsg("Cancellation request encountered an error.");
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
     const savedToken =
@@ -440,9 +517,42 @@ function PatientDashboardContent() {
             </div>
           )}
 
+          {refundSuccessMsg && (
+            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800 animate-fadeIn flex items-center gap-2">
+              <span className="text-lg">💰</span>
+              <span>{refundSuccessMsg}</span>
+            </div>
+          )}
+
           {/* Active Patient Appointment View */}
           {appointment ? (
             <div className="mt-8 grid gap-8 lg:grid-cols-12">
+              {/* EARLY QUEUE MOBILIZATION BANNER */}
+              {(appointment.early_mobilization || appointment.parsed_summary?.early_mobilization) &&
+                currentStatus !== "Completed" &&
+                currentStatus !== "Cancelled" && (
+                  <div className="lg:col-span-12 rounded-3xl bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 p-5 text-slate-950 shadow-xl border-2 border-amber-500 animate-pulse flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-black/10 text-2xl">
+                        ⚡
+                      </span>
+                      <div>
+                        <span className="rounded-full bg-black text-amber-300 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                          Early Queue Mobilization Notice
+                        </span>
+                        <h4 className="mt-0.5 text-base font-black text-slate-950">
+                          Your Attending Physician is Running Ahead of Schedule!
+                        </h4>
+                        <p className="text-xs font-bold text-slate-800">
+                          The previous slot concluded early. You are invited to report to the clinic now for immediate expedited consultation.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="rounded-2xl bg-slate-950 text-white px-4 py-2 text-xs font-black self-start sm:self-auto shadow-md">
+                      ✓ PRIORITY CHECK-IN OPEN
+                    </span>
+                  </div>
+                )}
               {/* CARD 2: DIGITAL INTAKE TOKEN PASS (BOARDING PASS FORMAT) */}
               <div className="lg:col-span-5 flex flex-col justify-between relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#00A896] via-[#028090] to-[#02C39A] p-6 sm:p-7 text-white shadow-xl shadow-teal-900/15">
                 <div className="pointer-events-none absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
@@ -559,12 +669,23 @@ function PatientDashboardContent() {
                       <span className="text-teal-100">{t("scheduledTimeLabel")}</span>
                       <span className="font-bold">{appointment.appointment_date}</span>
                     </div>
+                    {/* Payment Mode */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-teal-100">Payment Mode:</span>
+                      <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-black backdrop-blur-xs">
+                        {(appointment.payment_mode || appointment.parsed_summary?.payment_mode) === "OFFLINE"
+                          ? "🏥 Pay at Desk (₹500)"
+                          : "💳 Online Paid (₹500)"}
+                      </span>
+                    </div>
                     <div className="flex justify-between items-center">
                       <span className="text-teal-100">{t("queueStatusLabel")}</span>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-extrabold ${
                           currentStatus === "Completed"
                             ? "bg-emerald-300 text-emerald-950"
+                            : currentStatus === "Cancelled"
+                            ? "bg-rose-300 text-rose-950"
                             : currentStatus === "In-Consultation"
                             ? "bg-amber-300 text-amber-950 animate-pulse"
                             : "bg-teal-200 text-teal-950"
@@ -572,21 +693,54 @@ function PatientDashboardContent() {
                       >
                         {currentStatus === "Completed"
                           ? t("completed")
+                          : currentStatus === "Cancelled"
+                          ? "Cancelled (75% Refund Processed)"
                           : currentStatus === "In-Consultation"
                           ? `● ${t("inConsultation")}`
                           : t("waiting")}
                       </span>
                     </div>
+
+                    {/* Refund info if cancelled */}
+                    {currentStatus === "Cancelled" && (
+                      <div className="rounded-xl bg-white/15 p-2.5 text-xs font-bold text-white border border-white/20 mt-2">
+                        💰 Refund of ₹375 (75%) credited to original payment method. Token decommissioned.
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="mt-6">
+                <div className="mt-6 space-y-2">
                   <Link
                     href={`/patient-details?token=${encodeURIComponent(appointment.token)}`}
                     className="block w-full rounded-full bg-white py-3 text-center text-xs sm:text-sm font-extrabold text-[#028090] shadow-md transition-all hover:bg-teal-50 active:scale-98"
                   >
                     {t("updateIntakeBtn")}
                   </Link>
+
+                  {/* Dual Payment Cancellation / 75% Refund Action */}
+                  {currentStatus !== "Completed" && currentStatus !== "Cancelled" && (
+                    <>
+                      {(appointment.payment_mode || appointment.parsed_summary?.payment_mode) === "OFFLINE" ? (
+                        <div className="rounded-full bg-black/20 px-3 py-2 text-center text-[11px] font-semibold text-teal-100">
+                          ℹ️ Offline bookings must be cancelled at the hospital reception counter.
+                        </div>
+                      ) : getHoursToAppointment(appointment.appointment_date) > 3 ? (
+                        <button
+                          type="button"
+                          onClick={() => setCancelModalOpen(true)}
+                          className="w-full rounded-full bg-white/15 hover:bg-rose-600/30 text-rose-100 hover:text-white border border-rose-300/40 py-2.5 text-center text-xs font-bold transition backdrop-blur-xs flex items-center justify-center gap-1.5"
+                        >
+                          <span>✕</span>
+                          <span>Cancel Appointment & Claim 75% Refund (₹375)</span>
+                        </button>
+                      ) : (
+                        <div className="rounded-xl bg-rose-950/40 border border-rose-400/30 p-2.5 text-center text-[11px] font-semibold text-rose-100 backdrop-blur-xs">
+                          🔒 Cancellation locked (under 3 hours before slot). Non-refundable per hospital policy.
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -825,6 +979,63 @@ function PatientDashboardContent() {
                   className="h-full w-full rounded-2xl border border-slate-200"
                   title="Document Preview"
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cancellation Confirmation Modal with 75% Refund Policy */}
+        {cancelModalOpen && appointment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm animate-fadeIn">
+            <div className="w-full max-w-md overflow-hidden rounded-[2rem] bg-white shadow-2xl border border-slate-100">
+              <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-6 text-white text-center">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-white/20 text-2xl backdrop-blur-xs">
+                  ⚠️
+                </span>
+                <h3 className="mt-3 text-lg font-black">Cancel Consultation?</h3>
+                <p className="text-xs text-rose-100 mt-1">
+                  Token: <span className="font-mono font-bold">{appointment.token}</span>
+                </p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div className="rounded-2xl bg-slate-50 border border-slate-200/70 p-4 space-y-2 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Original Booking Fee:</span>
+                    <span className="font-bold text-slate-900">₹500.00</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Refund Amount (75% Policy):</span>
+                    <span>₹375.00</span>
+                  </div>
+                  <div className="flex justify-between text-slate-400 text-[11px] pt-1 border-t border-slate-200">
+                    <span>Administrative Fee (25%):</span>
+                    <span>₹125.00</span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-900 font-medium">
+                  💡 Refund of <strong>₹375</strong> will be issued to your original payment method. The slot will be released back to the queue immediately.
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOpen(false)}
+                    disabled={cancelling}
+                    className="flex-1 rounded-full border border-slate-200 bg-white py-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                  >
+                    Keep Appointment
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelAppointment}
+                    disabled={cancelling}
+                    className="flex-1 rounded-full bg-rose-600 hover:bg-rose-700 py-3 text-xs font-bold text-white shadow-md transition disabled:opacity-50"
+                  >
+                    {cancelling ? "Processing Refund..." : "Confirm & Refund"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

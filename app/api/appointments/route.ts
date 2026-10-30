@@ -58,6 +58,10 @@ export async function GET(req: Request) {
       const age = item.age ?? parsedSummary?.age ?? null;
       const gender = item.gender ?? parsedSummary?.gender ?? null;
       const phone = item.phone ?? parsedSummary?.phone ?? null;
+      const payment_mode = item.payment_mode || parsedSummary?.payment_mode || "ONLINE";
+      const early_mobilization = Boolean(item.early_mobilization || parsedSummary?.early_mobilization);
+      const refund_amount = item.refund_amount ?? parsedSummary?.refund_amount ?? null;
+      const refund_status = item.refund_status || parsedSummary?.refund_status || null;
 
       return {
         ...item,
@@ -70,6 +74,10 @@ export async function GET(req: Request) {
         age,
         gender,
         phone,
+        payment_mode,
+        early_mobilization,
+        refund_amount,
+        refund_status,
       };
     });
 
@@ -169,6 +177,10 @@ export async function POST(req: Request) {
     if (body.age !== undefined) summaryObj.age = body.age;
     if (body.gender !== undefined) summaryObj.gender = body.gender;
     if (body.phone !== undefined) summaryObj.phone = body.phone;
+    if (body.payment_mode) summaryObj.payment_mode = body.payment_mode;
+    if (body.early_mobilization !== undefined) summaryObj.early_mobilization = body.early_mobilization;
+    if (body.refund_amount !== undefined) summaryObj.refund_amount = body.refund_amount;
+    if (body.refund_status) summaryObj.refund_status = body.refund_status;
 
     const summaryPayload = JSON.stringify(summaryObj);
 
@@ -284,6 +296,10 @@ export async function PATCH(req: Request) {
     if (body.age !== undefined) summaryObj.age = body.age;
     if (body.gender !== undefined) summaryObj.gender = body.gender;
     if (body.phone !== undefined) summaryObj.phone = body.phone;
+    if (body.payment_mode) summaryObj.payment_mode = body.payment_mode;
+    if (body.early_mobilization !== undefined) summaryObj.early_mobilization = body.early_mobilization;
+    if (body.refund_amount !== undefined) summaryObj.refund_amount = body.refund_amount;
+    if (body.refund_status) summaryObj.refund_status = body.refund_status;
 
     const updatePayload: Record<string, any> = {
       summary: JSON.stringify(summaryObj),

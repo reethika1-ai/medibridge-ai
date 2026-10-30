@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
+import { dispatchEarlyMobilizationSms } from "@/lib/sms";
 
 export type ExtractedMedication = {
   name: string;
@@ -59,6 +60,10 @@ export type AppointmentItem = {
   report_public_id: string | null;
   created_at: string;
   status?: string;
+  payment_mode?: string | null;
+  early_mobilization?: boolean | null;
+  refund_amount?: number | null;
+  refund_status?: string | null;
   parsed_summary?: {
     clinical_synthesis?: ClinicalSynthesis;
     clinical_observations?: string;
@@ -155,6 +160,185 @@ export default function DoctorQueueClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [ehrExportSuccess, setEhrExportSuccess] = useState<string | null>(null);
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
+
+  // Early Queue Mobilization state
+  const [earlyMobilizeModalOpen, setEarlyMobilizeModalOpen] = useState(false);
+  const [selectedMobilizeSlot, setSelectedMobilizeSlot] = useState("");
+  const [mobilizing, setMobilizing] = useState(false);
+  const [mobilizedSlots, setMobilizedSlots] = useState<string[]>([]);
+  const [mobilizedSuccessMsg, setMobilizedSuccessMsg] = useState<string | null>(null);
+
+  // Physician Slot Orchestrator state
+  const [orchestratorModalOpen, setOrchestratorModalOpen] = useState(false);
+  const [orchestratorTab, setOrchestratorTab] = useState<"slots" | "walkin">("slots");
+  const [activeExtendedSlots, setActiveExtendedSlots] = useState<string[]>([
+    "16:30 - 17:30 (Evening Walk-in Extension)",
+  ]);
+
+  // Walk-in form state
+  const [walkInName, setWalkInName] = useState("");
+  const [walkInAge, setWalkInAge] = useState("");
+  const [walkInGender, setWalkInGender] = useState("Male");
+  const [walkInPhone, setWalkInPhone] = useState("");
+  const [walkInDept, setWalkInDept] = useState("General Medicine");
+  const [walkInSlot, setWalkInSlot] = useState("16:30 - 17:30 (Evening Walk-in Extension)");
+  const [walkInSymptoms, setWalkInSymptoms] = useState("");
+  const [issuingWalkIn, setIssuingWalkIn] = useState(false);
+  const [walkInSuccessToken, setWalkInSuccessToken] = useState<string | null>(null);
+
+  // Distinct slots from active waiting appointments
+  const upcomingSlotsWithCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    appointments.forEach((apt) => {
+      if (apt.status !== "Completed" && apt.status !== "Cancelled" && apt.appointment_date) {
+        const parts = apt.appointment_date.split("@");
+        const slot = (parts[1] || parts[0]).trim();
+        if (slot) {
+          counts[slot] = (counts[slot] || 0) + 1;
+        }
+      }
+    });
+    return Object.entries(counts).map(([slot, count]) => ({ slot, count }));
+  }, [appointments]);
+
+  async function handleTriggerEarlyMobilization() {
+    if (!selectedMobilizeSlot) return;
+    setMobilizing(true);
+    try {
+      const targets = appointments.filter((apt) => {
+        if (apt.status === "Completed" || apt.status === "Cancelled") return false;
+        const parts = apt.appointment_date?.split("@") || [];
+        const slot = (parts[1] || parts[0] || "").trim();
+        return slot.includes(selectedMobilizeSlot) || selectedMobilizeSlot.includes(slot);
+      });
+
+      for (const target of targets) {
+        await dispatchEarlyMobilizationSms(
+          target.phone || "9876543210",
+          target.patient_name,
+          target.token,
+          selectedMobilizeSlot
+        );
+
+        await fetch("/api/appointments", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            token: target.token,
+            early_mobilization: true,
+          }),
+        });
+      }
+
+      setAppointments((prev) =>
+        prev.map((apt) => {
+          const parts = apt.appointment_date?.split("@") || [];
+          const slot = (parts[1] || parts[0] || "").trim();
+          if (slot.includes(selectedMobilizeSlot) || selectedMobilizeSlot.includes(slot)) {
+            return {
+              ...apt,
+              early_mobilization: true,
+              parsed_summary: {
+                ...apt.parsed_summary,
+                early_mobilization: true,
+              },
+            };
+          }
+          return apt;
+        })
+      );
+
+      setMobilizedSlots((prev) => Array.from(new Set([...prev, selectedMobilizeSlot])));
+      setMobilizedSuccessMsg(
+        `⚡ Early Queue Mobilization successfully dispatched to ${targets.length} patient(s) in slot: ${selectedMobilizeSlot}. Priority check-in opened.`
+      );
+      setEarlyMobilizeModalOpen(false);
+      setTimeout(() => setMobilizedSuccessMsg(null), 8000);
+    } catch (err) {
+      console.error("Early mobilization failed:", err);
+    } finally {
+      setMobilizing(false);
+    }
+  }
+
+  async function handleRegisterWalkIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!walkInName.trim()) return;
+    setIssuingWalkIn(true);
+    setWalkInSuccessToken(null);
+
+    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+    const token = `MB-WALK-${randomSuffix}`;
+    const today = new Date().toISOString().split("T")[0];
+    const appointmentDate = `${today} @ ${walkInSlot}`;
+
+    try {
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token,
+          patient_name: walkInName.trim(),
+          age: walkInAge ? parseInt(walkInAge, 10) : null,
+          gender: walkInGender,
+          phone: walkInPhone.trim() || "0000000000",
+          department: walkInDept,
+          appointment_date: appointmentDate,
+          symptoms: `[WALK-IN OPD] ${walkInSymptoms.trim() || "On-demand outpatient walk-in consultation."}`,
+          payment_mode: "OFFLINE",
+          status: "Waiting",
+          urgent: false,
+          summary: JSON.stringify({
+            payment_mode: "OFFLINE",
+            walk_in: true,
+            slot_type: "ON_DEMAND_EXTENSION",
+          }),
+        }),
+      });
+
+      if (res.ok) {
+        const newApt: AppointmentItem = {
+          token,
+          patient_name: walkInName.trim(),
+          age: walkInAge ? parseInt(walkInAge, 10) : null,
+          gender: walkInGender,
+          phone: walkInPhone.trim() || "0000000000",
+          department: walkInDept,
+          appointment_date: appointmentDate,
+          symptoms: `[WALK-IN OPD] ${walkInSymptoms.trim() || "On-demand outpatient walk-in consultation."}`,
+          payment_mode: "OFFLINE",
+          status: "Waiting",
+          urgent: false,
+          summary: JSON.stringify({
+            payment_mode: "OFFLINE",
+            walk_in: true,
+            slot_type: "ON_DEMAND_EXTENSION",
+          }),
+          created_at: new Date().toISOString(),
+          report_public_id: null,
+          parsed_summary: {
+            payment_mode: "OFFLINE",
+            walk_in: true,
+            slot_type: "ON_DEMAND_EXTENSION",
+          },
+        };
+
+        setAppointments((prev) => [newApt, ...prev]);
+        setWalkInSuccessToken(token);
+        setWalkInName("");
+        setWalkInAge("");
+        setWalkInPhone("");
+        setWalkInSymptoms("");
+      } else {
+        alert("Failed to register walk-in token.");
+      }
+    } catch (err) {
+      console.error("Walk-in registration error:", err);
+      alert("Error registering walk-in token.");
+    } finally {
+      setIssuingWalkIn(false);
+    }
+  }
 
   const seenRedAlertsRef = useRef<Set<string>>(new Set());
 
@@ -443,29 +627,108 @@ export default function DoctorQueueClient({
           </button>
         </div>
 
-        {/* Live Search and Logout */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 sm:w-72">
+        {/* Actions Group: Early Mobilization, Slot Orchestrator, Live Search and Logout */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Feature 3: Call Next Slot Early Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (upcomingSlotsWithCounts.length > 0) {
+                setSelectedMobilizeSlot(upcomingSlotsWithCounts[0].slot);
+              }
+              setEarlyMobilizeModalOpen(true);
+            }}
+            className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 px-3.5 py-2.5 text-xs font-black text-slate-950 shadow-md shadow-amber-500/20 transition hover:scale-105 active:scale-95"
+            title="Call next slot patients early when current hour finishes ahead of schedule"
+          >
+            <span>⚡</span>
+            <span>Early Queue Mobilization</span>
+          </button>
+
+          {/* Feature 4: Physician Slot Orchestrator Button */}
+          <button
+            type="button"
+            onClick={() => setOrchestratorModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-teal-600 to-[#028090] px-3.5 py-2.5 text-xs font-black text-white shadow-md shadow-teal-500/20 transition hover:scale-105 active:scale-95"
+            title="Add on-demand slots post-16:30 for offline walk-ins & queue extensions"
+          >
+            <span>➕</span>
+            <span>Slot Orchestrator</span>
+          </button>
+
+          <div className="relative flex-1 sm:w-64">
             <span className="absolute inset-y-0 left-3 flex items-center text-slate-500">
               🔍
             </span>
             <input
               type="text"
-              placeholder="Search token (e.g. 406695 / MB-...), name, dept..."
+              placeholder="Search token, name, dept..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 pl-9 pr-4 py-2.5 text-xs sm:text-sm font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
+              className="w-full rounded-2xl border border-slate-800 bg-slate-900/90 pl-9 pr-4 py-2.5 text-xs font-medium text-white outline-none transition placeholder:text-slate-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30"
             />
           </div>
 
           <button
             onClick={handleLogout}
-            className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 shadow-xs transition hover:bg-slate-800 hover:text-white active:scale-95"
+            className="rounded-2xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-slate-300 shadow-xs transition hover:bg-slate-800 hover:text-white active:scale-95"
           >
             Sign Out
           </button>
         </div>
       </div>
+
+      {/* Feature 3: Early Mobilization Active Banner */}
+      {mobilizedSuccessMsg && (
+        <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-amber-950/80 via-yellow-950/70 to-amber-950/80 p-4 text-amber-200 shadow-xl backdrop-blur-md flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-slate-950 text-lg font-black">
+              ⚡
+            </span>
+            <p className="text-xs font-bold leading-relaxed">{mobilizedSuccessMsg}</p>
+          </div>
+          <button
+            onClick={() => setMobilizedSuccessMsg(null)}
+            className="rounded-lg bg-black/40 px-2.5 py-1 text-[11px] font-bold text-amber-300 hover:bg-black/60"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Feature 4: Walk-in Token Created Notification */}
+      {walkInSuccessToken && (
+        <div className="rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-950/80 via-teal-950/70 to-emerald-950/80 p-4 text-emerald-200 shadow-xl backdrop-blur-md flex items-center justify-between gap-3 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 text-lg font-black">
+              ✓
+            </span>
+            <div>
+              <p className="text-xs font-bold text-white">
+                Walk-in Patient Token Issued:{" "}
+                <span className="font-mono font-black text-emerald-300">{walkInSuccessToken}</span>
+              </p>
+              <p className="text-[11px] text-emerald-300">
+                Payment Mode: OFFLINE (Collect ₹500 at OPD Reception Counter). Added to queue immediately.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setWalkInSuccessToken(null)}
+            className="rounded-lg bg-black/40 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-black/60"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* EHR Export notification */}
+      {ehrExportSuccess && (
+        <div className="rounded-2xl border border-cyan-500/40 bg-cyan-950/80 p-3 text-cyan-200 text-xs font-semibold flex items-center justify-between">
+          <span>{ehrExportSuccess}</span>
+          <button onClick={() => setEhrExportSuccess(null)} className="text-cyan-400 font-bold">✕</button>
+        </div>
+      )}
 
       {/* The Live Triage Board Table */}
       <div className="overflow-hidden rounded-3xl border border-slate-800/90 bg-slate-900/80 shadow-2xl backdrop-blur-md">
@@ -581,7 +844,7 @@ export default function DoctorQueueClient({
                         }`}
                       >
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <span
                               className={`font-mono text-base font-black transition-colors ${
                                 redAlert
@@ -596,11 +859,28 @@ export default function DoctorQueueClient({
                                 SOS
                               </span>
                             )}
+                            {(apt.token?.startsWith("MB-WALK-") || apt.parsed_summary?.walk_in) && (
+                              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-400/40">
+                                🚶 Walk-in
+                              </span>
+                            )}
+                            {(apt.early_mobilization || apt.parsed_summary?.early_mobilization) && (
+                              <span className="rounded bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-400/40 animate-pulse">
+                                ⚡ Mobilized Early
+                              </span>
+                            )}
                           </div>
                           <p className="font-bold text-white text-sm mt-0.5">
                             {apt.patient_name}
                             {apt.age ? ` (${apt.age}y${apt.gender ? ` / ${apt.gender[0]}` : ""})` : ""}
                           </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className="text-[10px] text-slate-400">
+                              {(apt.payment_mode || apt.parsed_summary?.payment_mode) === "OFFLINE"
+                                ? "🏥 Pay at Desk (₹500)"
+                                : "💳 Online Paid (₹500)"}
+                            </span>
+                          </div>
                         </td>
 
                         <td className="px-6 py-4 text-xs">
@@ -1370,6 +1650,405 @@ export default function DoctorQueueClient({
                 className="h-full w-full rounded-2xl border border-slate-800"
                 title="Document Quick Inspector"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature 3: Early Queue Mobilization Modal */}
+      {earlyMobilizeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl">
+            <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 p-6 text-slate-950 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-black/15 text-2xl font-black">
+                  ⚡
+                </span>
+                <div>
+                  <h3 className="text-lg font-black tracking-tight text-slate-950">
+                    Early Queue Mobilization
+                  </h3>
+                  <p className="text-xs font-bold text-amber-950/90">
+                    Finished current hour early? Summon next slot patients ahead of time.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEarlyMobilizeModalOpen(false)}
+                className="rounded-xl bg-black/10 p-2 text-slate-950 hover:bg-black/20 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">
+                  Select Next Hour Slot to Summon:
+                </label>
+
+                {upcomingSlotsWithCounts.length > 0 ? (
+                  <div className="space-y-2">
+                    {upcomingSlotsWithCounts.map(({ slot, count }) => (
+                      <label
+                        key={slot}
+                        className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition ${
+                          selectedMobilizeSlot === slot
+                            ? "bg-amber-950/40 border-amber-500 text-amber-200"
+                            : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="radio"
+                            name="mobilize_slot"
+                            value={slot}
+                            checked={selectedMobilizeSlot === slot}
+                            onChange={() => setSelectedMobilizeSlot(slot)}
+                            className="accent-amber-500"
+                          />
+                          <span className="font-mono text-sm font-bold">{slot}</span>
+                        </div>
+                        <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-xs font-bold text-amber-400">
+                          {count} Waiting
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-xs text-slate-400 mb-2">
+                      No distinct waiting slots detected. Select standard upcoming slot:
+                    </p>
+                    {["11:00 AM - 12:00 PM", "12:00 PM - 01:00 PM", "14:00 - 15:00", "15:00 - 16:00"].map((s) => (
+                      <label
+                        key={s}
+                        className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer ${
+                          selectedMobilizeSlot === s
+                            ? "bg-amber-950/40 border-amber-500 text-amber-200"
+                            : "bg-slate-950/50 border-slate-800 text-slate-300 hover:border-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            name="mobilize_slot"
+                            value={s}
+                            checked={selectedMobilizeSlot === s}
+                            onChange={() => setSelectedMobilizeSlot(s)}
+                            className="accent-amber-500"
+                          />
+                          <span className="font-mono text-xs font-bold">{s}</span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-950/30 p-3.5 text-xs text-amber-200/90 leading-relaxed">
+                💡 <strong>Immediate Dispatch Action:</strong> Sending this alert will dispatch an automated early arrival notification via SMS to all patients in this slot and display an <em>Early Queue Mobilization</em> priority banner on their tracking screen.
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEarlyMobilizeModalOpen(false)}
+                  disabled={mobilizing}
+                  className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 py-3 text-xs font-bold text-slate-300 hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTriggerEarlyMobilization}
+                  disabled={mobilizing || !selectedMobilizeSlot}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/20 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <span>⚡</span>
+                  <span>{mobilizing ? "Dispatching Notices..." : "Summon Slot Early"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feature 4: Physician Slot Orchestrator Modal */}
+      {orchestratorModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md animate-fadeIn">
+          <div className="w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl">
+            <div className="bg-gradient-to-r from-teal-700 via-[#028090] to-[#00A896] p-6 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-2xl backdrop-blur-xs">
+                  🎛️
+                </span>
+                <div>
+                  <h3 className="text-lg font-black tracking-tight">Physician Slot Orchestrator</h3>
+                  <p className="text-xs text-teal-100">
+                    Post-16:30 On-Demand Slot Extensions & Offline Walk-in Tokens
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOrchestratorModalOpen(false)}
+                className="rounded-xl bg-white/15 p-2 text-white hover:bg-white/25 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Orchestrator Sub-navigation Tabs */}
+            <div className="flex border-b border-slate-800 bg-slate-950 px-6 pt-3">
+              <button
+                type="button"
+                onClick={() => setOrchestratorTab("walkin")}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition ${
+                  orchestratorTab === "walkin"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                🚶 Issue Walk-in Token (Offline)
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrchestratorTab("slots")}
+                className={`pb-3 px-4 text-xs font-bold border-b-2 transition ${
+                  orchestratorTab === "slots"
+                    ? "border-teal-400 text-teal-300"
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                ⏱️ Post-16:30 Extension Slots ({activeExtendedSlots.length})
+              </button>
+            </div>
+
+            <div className="p-6">
+              {orchestratorTab === "walkin" ? (
+                <form onSubmit={handleRegisterWalkIn} className="space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Patient Full Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={walkInName}
+                        onChange={(e) => setWalkInName(e.target.value)}
+                        placeholder="e.g. Ramesh Verma"
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Age (Years)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={walkInAge}
+                        onChange={(e) => setWalkInAge(e.target.value)}
+                        placeholder="e.g. 45"
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Gender
+                      </label>
+                      <select
+                        value={walkInGender}
+                        onChange={(e) => setWalkInGender(e.target.value)}
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Contact Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={walkInPhone}
+                        onChange={(e) => setWalkInPhone(e.target.value)}
+                        placeholder="10-digit mobile"
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500 font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Department
+                      </label>
+                      <select
+                        value={walkInDept}
+                        onChange={(e) => setWalkInDept(e.target.value)}
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500"
+                      >
+                        <option value="General Medicine">General Medicine</option>
+                        <option value="Cardiology">Cardiology</option>
+                        <option value="Orthopedics">Orthopedics</option>
+                        <option value="Neurology">Neurology</option>
+                        <option value="Pediatrics">Pediatrics</option>
+                        <option value="Pulmonology">Pulmonology</option>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Consultation Slot (Standard & Extended)
+                      </label>
+                      <select
+                        value={walkInSlot}
+                        onChange={(e) => setWalkInSlot(e.target.value)}
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2.5 text-xs text-white outline-none focus:border-teal-500 font-mono"
+                      >
+                        <optgroup label="Post-16:30 Extension Slots">
+                          {activeExtendedSlots.map((s) => (
+                            <option key={s} value={s}>
+                              ⚡ {s}
+                            </option>
+                          ))}
+                        </optgroup>
+                        <optgroup label="Standard Working Hours">
+                          <option value="15:00 - 16:00">15:00 - 16:00 (Standard)</option>
+                          <option value="16:00 - 16:30">16:00 - 16:30 (Final Regular Slot)</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-300 mb-1">
+                        Chief Complaint / Symptoms
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={walkInSymptoms}
+                        onChange={(e) => setWalkInSymptoms(e.target.value)}
+                        placeholder="Brief notes on acute presentation..."
+                        className="w-full rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-white outline-none focus:border-teal-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl bg-teal-950/40 border border-teal-500/30 p-3.5 text-xs text-teal-200">
+                    <div className="flex items-center gap-2 font-bold text-teal-100">
+                      <span>🏥</span>
+                      <span>Payment Protocol: OFFLINE DESK MODE (₹500)</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-teal-300">
+                      Walk-in tokens are registered under OFFLINE mode with immediate insertion into the live queue. Collect the ₹500 fee at the clinic counter.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setOrchestratorModalOpen(false)}
+                      className="flex-1 rounded-2xl border border-slate-800 bg-slate-950 py-3 text-xs font-bold text-slate-400 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={issuingWalkIn || !walkInName.trim()}
+                      className="flex-1 rounded-2xl bg-gradient-to-r from-teal-500 to-[#00A896] hover:from-teal-400 hover:to-teal-500 py-3 text-xs font-black text-slate-950 shadow-md transition disabled:opacity-50"
+                    >
+                      {issuingWalkIn ? "Registering Token..." : "Issue Walk-in Token"}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-300 leading-relaxed">
+                    <strong className="text-white">Post-16:30 Extension Slot Policy:</strong> Standard scheduled outpatient hours conclude at 16:30. Physicians can activate on-demand extension slots below to absorb unexpected walk-in loads without exceeding normal 8/8 patient capacity constraints.
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      {
+                        name: "16:30 - 17:30 (Evening Walk-in Extension)",
+                        desc: "Standard 60-min post-closing extension for offline walk-ins.",
+                      },
+                      {
+                        name: "17:30 - 18:30 (Extended OPD Slot)",
+                        desc: "High-volume surge buffer for delayed clinic procedures.",
+                      },
+                      {
+                        name: "18:30 - 19:30 (Night Emergency Walk-in)",
+                        desc: "Dedicated twilight triage slot prior to Night Duty handoff.",
+                      },
+                    ].map((slot) => {
+                      const isActive = activeExtendedSlots.includes(slot.name);
+                      return (
+                        <div
+                          key={slot.name}
+                          className={`rounded-2xl border p-4 flex items-center justify-between gap-3 transition ${
+                            isActive
+                              ? "border-teal-500/50 bg-teal-950/20 text-white"
+                              : "border-slate-800 bg-slate-950/40 text-slate-400"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-black text-white">
+                                {slot.name}
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  isActive
+                                    ? "bg-teal-500 text-slate-950"
+                                    : "bg-slate-800 text-slate-400"
+                                }`}
+                              >
+                                {isActive ? "ACTIVE" : "INACTIVE"}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-400">{slot.desc}</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveExtendedSlots((prev) =>
+                                isActive
+                                  ? prev.filter((s) => s !== slot.name)
+                                  : [...prev, slot.name]
+                              );
+                            }}
+                            className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
+                              isActive
+                                ? "bg-rose-950/60 border border-rose-500/40 text-rose-300 hover:bg-rose-900"
+                                : "bg-teal-600 text-white hover:bg-teal-500"
+                            }`}
+                          >
+                            {isActive ? "Deactivate" : "Activate Slot"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setOrchestratorModalOpen(false)}
+                      className="w-full rounded-2xl bg-slate-800 hover:bg-slate-700 py-3 text-xs font-bold text-white transition"
+                    >
+                      Done & Return to Queue
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

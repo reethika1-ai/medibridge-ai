@@ -13,6 +13,7 @@ function TokenScreenContent() {
   const doctor = searchParams.get("doctor") || "Attending Physician";
   const date = searchParams.get("date") || "Scheduled Date";
   const time = searchParams.get("time") || "Scheduled Time";
+  const paymentMode = searchParams.get("payment_mode") || "ONLINE";
 
   const [copied, setCopied] = useState(false);
   const [queueInfo, setQueueInfo] = useState<{
@@ -155,6 +156,30 @@ function TokenScreenContent() {
                   <p className="font-bold text-slate-900">
                     {date} ({time})
                   </p>
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-400">Settlement Mode:</span>
+                  <p className="font-bold text-slate-900">
+                    {paymentMode === "ONLINE" ? "💳 Online Demo Paid (₹500)" : "🏥 Pay at Desk (₹500)"}
+                  </p>
+                </div>
+              </div>
+
+              {/* 20-Min Early Arrival Notice & Automated SMS Confirmation */}
+              <div className="mt-5 rounded-2xl bg-amber-50 border border-amber-200/80 p-4 text-left text-xs text-amber-900 flex items-start gap-3">
+                <span className="text-xl">⏱️</span>
+                <div>
+                  <span className="font-black uppercase text-[11px] text-amber-800 tracking-wider block">
+                    Express Triage Protocol: Arrive 20 Minutes Prior
+                  </span>
+                  <p className="mt-1 text-xs text-amber-950 font-medium leading-relaxed">
+                    Please arrive at the clinic at least <strong>20 minutes prior to your slot ({time})</strong> for preliminary vitals and express triage intake. An automated confirmation SMS has been dispatched to your verified mobile number.
+                  </p>
+                  {paymentMode === "ONLINE" && (
+                    <span className="mt-1.5 inline-block text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded">
+                      ✓ 75% refund policy active (cancellation available &gt;3 hours prior to slot)
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

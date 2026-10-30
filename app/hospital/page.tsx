@@ -64,12 +64,20 @@ async function HospitalPortalData() {
     const age = item.age ?? parsedSummary?.age ?? null;
     const gender = item.gender ?? parsedSummary?.gender ?? null;
     const phone = item.phone ?? parsedSummary?.phone ?? null;
+    const payment_mode = item.payment_mode ?? parsedSummary?.payment_mode ?? "ONLINE";
+    const early_mobilization = item.early_mobilization ?? parsedSummary?.early_mobilization ?? false;
+    const refund_amount = item.refund_amount ?? parsedSummary?.refund_amount ?? null;
+    const refund_status = item.refund_status ?? parsedSummary?.refund_status ?? null;
 
     return {
       ...item,
       age,
       gender,
       phone,
+      payment_mode,
+      early_mobilization,
+      refund_amount,
+      refund_status,
       status,
       prescription_url,
       report_url,

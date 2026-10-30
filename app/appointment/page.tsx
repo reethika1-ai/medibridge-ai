@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/context/LanguageContext";
+import OtpAuthModal from "@/components/OtpAuthModal";
+import { dispatchBookingSms } from "@/lib/sms";
 
 const departmentDoctors: Record<string, string[]> = {
   Cardiology: [
@@ -66,6 +68,10 @@ export default function AppointmentPage() {
   const [gender, setGender] = useState("Female");
   const [phone, setPhone] = useState("");
   const [symptoms, setSymptoms] = useState("");
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<"ONLINE" | "OFFLINE">("ONLINE");
+  const [smsSentNotice, setSmsSentNotice] = useState<string | null>(null);
 
   function toggleVoiceInput() {
     if (isListening) {
@@ -332,6 +338,11 @@ export default function AppointmentPage() {
       setErrorMsg("Please enter a valid phone number.");
       return;
     }
+    if (!isPhoneVerified) {
+      setErrorMsg("Mandatory mobile verification required before appointment booking. Please verify with OTP.");
+      setIsOtpModalOpen(true);
+      return;
+    }
     if (!date) {
       setErrorMsg("Please select an appointment date.");
       return;
@@ -462,11 +473,17 @@ export default function AppointmentPage() {
           document_url,
           report_public_id:
             report_public_id || blood_report_public_id || prescription_public_id || null,
+          payment_mode: paymentMode,
+          payment_status: paymentMode === "ONLINE" ? "PAID" : "PENDING_COUNTER",
+          early_mobilization: false,
           summary: triageData || {
             chief_complaint: symptoms.slice(0, 80),
             summary: symptoms,
             clinical_observations: symptoms,
             urgency_level: "ROUTINE",
+            payment_mode: paymentMode,
+            payment_status: paymentMode === "ONLINE" ? "PAID" : "PENDING_COUNTER",
+            early_mobilization: false,
             status: "Waiting",
           },
           status: "Waiting",
@@ -483,12 +500,28 @@ export default function AppointmentPage() {
         localStorage.setItem("medibridge_last_token", token);
       }
 
+      // Dispatch automated SMS confirmation with 20-min early arrival notice
+      try {
+        await dispatchBookingSms({
+          phone: phone.trim(),
+          patientName: name.trim(),
+          token,
+          date,
+          timeSlot: time,
+          doctorName: doctor,
+          paymentMode,
+          amount: 500,
+        });
+      } catch (smsErr) {
+        console.warn("SMS delivery notification skipped:", smsErr);
+      }
+
       router.push(
         `/appointment/token?token=${encodeURIComponent(token)}&name=${encodeURIComponent(
           name.trim()
         )}&dept=${encodeURIComponent(department)}&doctor=${encodeURIComponent(
           doctor
-        )}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`
+        )}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}&payment_mode=${encodeURIComponent(paymentMode)}`
       );
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Booking request failed.");
@@ -599,12 +632,27 @@ export default function AppointmentPage() {
             {/* Contact Phone & Symptoms */}
             <div className="grid gap-6 sm:grid-cols-12">
               <div className="sm:col-span-5">
-                <label
-                  htmlFor="patient-phone"
-                  className="block text-xs font-bold uppercase tracking-wider text-slate-700"
-                >
-                  {t("phone")} <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="patient-phone"
+                    className="block text-xs font-bold uppercase tracking-wider text-slate-700"
+                  >
+                    {t("phone")} <span className="text-rose-500">*</span>
+                  </label>
+                  {isPhoneVerified ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 border border-emerald-200">
+                      ✓ Phone Verified via OTP
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsOtpModalOpen(true)}
+                      className="rounded-full bg-teal-50 hover:bg-teal-100 border border-teal-200 px-2.5 py-0.5 text-[10px] font-black text-teal-800 transition"
+                    >
+                      📱 Verify via OTP
+                    </button>
+                  )}
+                </div>
                 <input
                   id="patient-phone"
                   type="tel"
@@ -1123,6 +1171,101 @@ export default function AppointmentPage() {
               </div>
             </div>
 
+            {/* DUAL PAYMENT MODES */}
+            <div className="border-t border-slate-100 pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-teal-700">
+                    Payment Mode & Refund Policy
+                  </span>
+                  <h4 className="mt-0.5 text-sm font-bold text-slate-900">
+                    Choose Consultation Settlement Mode (Standard OPD Fee: ₹500)
+                  </h4>
+                </div>
+                <span className="rounded-full bg-teal-50 border border-teal-200 px-3 py-1 text-xs font-black text-teal-800 self-start sm:self-auto">
+                  Fixed Fee: ₹500
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                {/* Mode 1: Online Demo Pay */}
+                <div
+                  onClick={() => setPaymentMode("ONLINE")}
+                  className={`relative cursor-pointer rounded-3xl border-2 p-5 transition-all duration-200 ${
+                    paymentMode === "ONLINE"
+                      ? "border-[#00A896] bg-teal-50/40 shadow-md ring-2 ring-teal-400/20"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-100 text-xl text-teal-700">
+                        💳
+                      </span>
+                      <div>
+                        <span className="font-black text-slate-900 text-sm block">Online Demo Pay (UPI/Cards)</span>
+                        <span className="text-[10px] text-slate-500">Instant Mock Settlement · ₹500</span>
+                      </div>
+                    </div>
+                    <input
+                      type="radio"
+                      name="payment_mode"
+                      checked={paymentMode === "ONLINE"}
+                      onChange={() => setPaymentMode("ONLINE")}
+                      className="h-4 w-4 text-teal-600 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="mt-3.5 space-y-1.5 border-t border-teal-100 pt-3 text-xs">
+                    <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-md text-[10px]">
+                      ✓ 75% Refund Policy (&gt;3h Cancellation)
+                    </span>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Cancel up to <strong>3 hours prior</strong> to scheduled slot for a guaranteed <strong>75% refund (₹375)</strong> credited to source. Instant mock payment confirmation.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Mode 2: Offline Pay at Hospital */}
+                <div
+                  onClick={() => setPaymentMode("OFFLINE")}
+                  className={`relative cursor-pointer rounded-3xl border-2 p-5 transition-all duration-200 ${
+                    paymentMode === "OFFLINE"
+                      ? "border-[#00A896] bg-teal-50/40 shadow-md ring-2 ring-teal-400/20"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-700">
+                        🏥
+                      </span>
+                      <div>
+                        <span className="font-black text-slate-900 text-sm block">Pay at Hospital (Offline)</span>
+                        <span className="text-[10px] text-slate-500">OPD Registration Billing Desk</span>
+                      </div>
+                    </div>
+                    <input
+                      type="radio"
+                      name="payment_mode"
+                      checked={paymentMode === "OFFLINE"}
+                      onChange={() => setPaymentMode("OFFLINE")}
+                      className="h-4 w-4 text-teal-600 focus:ring-teal-500"
+                    />
+                  </div>
+
+                  <div className="mt-3.5 space-y-1.5 border-t border-slate-100 pt-3 text-xs">
+                    <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md text-[10px]">
+                      ⚠️ Desk Settlement · Non-Cancellable Online
+                    </span>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Pay ₹500 directly at the hospital reception/billing desk upon arrival. Online cancellation is not permitted for offline bookings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Submit Action with Loading Steps */}
             <div className="border-t border-slate-100 pt-6">
               <button
@@ -1146,6 +1289,18 @@ export default function AppointmentPage() {
         <p className="mt-8 text-center text-xs text-slate-400">
           MediBridge AI · Real-time Token Issuance & Supabase Cloud Persistence
         </p>
+        <OtpAuthModal
+          isOpen={isOtpModalOpen}
+          initialName={name}
+          initialPhone={phone}
+          onClose={() => setIsOtpModalOpen(false)}
+          onSuccess={(userData) => {
+            setName(userData.name);
+            setPhone(userData.phone);
+            setIsPhoneVerified(true);
+            setErrorMsg("");
+          }}
+        />
       </main>
 
       <footer className="border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
