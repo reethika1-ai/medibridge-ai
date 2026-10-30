@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import EmergencyModal from "@/components/EmergencyModal";
+import OtpAuthModal from "@/components/OtpAuthModal";
+import { getDicomHighContrastUrl, getHipaaWatermarkedUrl, getPdfThumbnailUrl } from "@/lib/cloudinary";
 import { useLanguage } from "@/context/LanguageContext";
 
 type AppointmentRecord = {
@@ -63,6 +65,14 @@ function PatientDashboardContent() {
   const [cancelModalOpen, setCancelModalOpen] = useState<boolean>(false);
   const [cancelling, setCancelling] = useState<boolean>(false);
   const [refundSuccessMsg, setRefundSuccessMsg] = useState<string>("");
+  const [patientSession, setPatientSession] = useState<{
+    name: string;
+    phone: string;
+    verified: boolean;
+  } | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [patientAppointments, setPatientAppointments] = useState<AppointmentRecord[]>([]);
+  const [dicomFilter, setDicomFilter] = useState<"standard" | "contrast" | "hipaa">("standard");
 
   function getHoursToAppointment(appointmentDateStr?: string | null): number {
     if (!appointmentDateStr) return 0;
@@ -130,6 +140,63 @@ function PatientDashboardContent() {
   }
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("medibridge_patient_auth");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.phone && parsed.verified) {
+            setPatientSession(parsed);
+            fetchPatientAppointments(parsed.phone);
+            return;
+          }
+        } catch {}
+      }
+      setIsAuthModalOpen(true);
+    }
+  }, []);
+
+  async function fetchPatientAppointments(phone: string) {
+    try {
+      const clean = phone.replace(/\D/g, "").slice(-10);
+      const res = await fetch(`/api/appointments?phone=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const json = await res.json();
+        const list: AppointmentRecord[] = json.appointments || json.data || [];
+        setPatientAppointments(list);
+        if (list.length > 0 && !tokenParam) {
+          fetchAppointment(list[0].token);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch user appointments:", e);
+    }
+  }
+
+  function handleLoginSuccess(userData: { name: string; phone: string }) {
+    const session = { name: userData.name, phone: userData.phone, verified: true };
+    setPatientSession(session);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("medibridge_patient_auth", JSON.stringify(session));
+    }
+    fetchPatientAppointments(userData.phone);
+    setIsAuthModalOpen(false);
+  }
+
+  function handleSignOut() {
+    setPatientSession(null);
+    setAppointment(null);
+    setActiveToken("");
+    setTokenInput("");
+    setPatientAppointments([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("medibridge_patient_auth");
+      localStorage.removeItem("medibridge_last_token");
+    }
+    setIsAuthModalOpen(true);
+  }
+
+  useEffect(() => {
     const savedToken =
       tokenParam ||
       (typeof window !== "undefined" ? localStorage.getItem("medibridge_last_token") : null);
@@ -154,6 +221,18 @@ function PatientDashboardContent() {
       }
 
       const appt = json.appointment;
+
+      // Phone privacy enforcement: restrict dashboard visibility strictly to authenticated phone
+      if (patientSession?.phone) {
+        const sessionClean = patientSession.phone.replace(/\D/g, "").slice(-10);
+        const apptClean = String(appt.phone || appt.parsed_summary?.phone || "").replace(/\D/g, "").slice(-10);
+        if (sessionClean && apptClean && sessionClean !== apptClean) {
+          setErrorMsg("🔒 Access Restricted: This appointment token belongs to a different mobile number. Dashboard visibility is strictly restricted to your authenticated phone session.");
+          setAppointment(null);
+          return;
+        }
+      }
+
       setAppointment(appt);
       setActiveToken(tok.trim());
 
@@ -482,6 +561,74 @@ function PatientDashboardContent() {
         {/* LIVE TOKEN TRACKER & ACTIVE CONSULTATION ELEVATION      */}
         {/* ======================================================== */}
         <section className="mt-10 rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.04)] sm:p-8">
+          {/* Authenticated Patient Session Banner */}
+          {patientSession ? (
+            <div className="mb-6 rounded-2xl bg-teal-50/80 border border-teal-200/80 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#00A896] text-white text-xs font-bold">
+                  ✓
+                </span>
+                <div>
+                  <span className="text-teal-950 font-bold">
+                    Authenticated Patient: {patientSession.name} ({patientSession.phone})
+                  </span>
+                  <p className="text-[11px] text-teal-800">
+                    Dashboard access verified · Displaying appointments registered strictly to this mobile number
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="rounded-full border border-teal-300 bg-white px-3.5 py-1.5 text-[11px] font-bold text-teal-800 hover:bg-teal-50 transition self-start sm:self-auto"
+              >
+                Sign Out / Switch Patient
+              </button>
+            </div>
+          ) : (
+            <div className="mb-6 rounded-2xl bg-amber-50 border border-amber-200 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-amber-900">
+              <div className="flex items-center gap-2">
+                <span>🔒</span>
+                <span>Authentication Required: Please verify your phone with OTP to view your health records.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="rounded-full bg-amber-500 hover:bg-amber-600 px-4 py-1.5 text-xs font-bold text-slate-950 self-start sm:self-auto"
+              >
+                Login via Phone OTP
+              </button>
+            </div>
+          )}
+
+          {/* Quick Consultation Switcher if patient has multiple bookings */}
+          {patientAppointments.length > 1 && (
+            <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs">
+              <span className="font-bold text-slate-700 block mb-2">
+                Your Registered Consultations ({patientAppointments.length}):
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {patientAppointments.map((apt) => (
+                  <button
+                    key={apt.token}
+                    type="button"
+                    onClick={() => {
+                      setActiveToken(apt.token);
+                      setTokenInput(apt.token);
+                      fetchAppointment(apt.token);
+                    }}
+                    className={`rounded-full px-3 py-1 font-mono text-xs font-bold transition ${
+                      activeToken === apt.token
+                        ? "bg-[#00A896] text-white shadow-xs"
+                        : "bg-white border border-slate-200 text-slate-700 hover:border-teal-400"
+                    }`}
+                  >
+                    🎟️ {apt.token} ({apt.department?.split("-")[0].trim()})
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
             <div>
               <span className="text-xs font-black uppercase tracking-wider text-[#00A896]">
@@ -960,29 +1107,120 @@ function PatientDashboardContent() {
           </div>
         </section>
 
-        {/* Modal Quick Preview for Attached Document */}
-        {previewDocModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-100 p-4">
-                <h3 className="text-sm font-bold text-slate-900">{t("docVaultViewer")}</h3>
-                <button
-                  onClick={() => setPreviewDocModal(null)}
-                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="h-[70vh] bg-slate-50 p-4 flex items-center justify-center">
-                <iframe
-                  src={previewDocModal}
-                  className="h-full w-full rounded-2xl border border-slate-200"
-                  title="Document Preview"
-                />
+        {/* Modal Quick Preview with Cloudinary Medical Pipeline Filters */}
+        {previewDocModal && (() => {
+          let activeDocUrl = previewDocModal;
+          if (dicomFilter === "contrast") {
+            activeDocUrl = getDicomHighContrastUrl(previewDocModal);
+          } else if (dicomFilter === "hipaa") {
+            activeDocUrl = getHipaaWatermarkedUrl(previewDocModal);
+          }
+
+          const isPdf = previewDocModal.toLowerCase().endsWith(".pdf");
+          const pdfThumb = isPdf ? getPdfThumbnailUrl(previewDocModal) : null;
+
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-[2rem] bg-white shadow-2xl flex flex-col border border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 p-4 gap-3 bg-slate-50/80">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-100 text-teal-800 font-black text-sm">
+                      📄
+                    </span>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <span>{t("docVaultViewer")}</span>
+                        <span className="rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-black text-[#00A896] border border-teal-200">
+                          Cloudinary Enhanced
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Interactive DICOM bone contrast · HIPAA confidentiality watermark · Instant rasterization
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Filter Mode Controls */}
+                  <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setDicomFilter("standard")}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                        dicomFilter === "standard"
+                          ? "bg-white text-teal-700 shadow-xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDicomFilter("contrast")}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                        dicomFilter === "contrast"
+                          ? "bg-amber-400 text-slate-950 font-black shadow-xs"
+                          : "text-amber-800 hover:text-amber-950"
+                      }`}
+                    >
+                      <span>🩻</span>
+                      <span>DICOM Contrast</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDicomFilter("hipaa")}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                        dicomFilter === "hipaa"
+                          ? "bg-rose-600 text-white shadow-xs"
+                          : "text-rose-700 hover:text-rose-900"
+                      }`}
+                    >
+                      <span>🔒</span>
+                      <span>HIPAA Stamp</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={activeDocUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Download
+                    </a>
+                    <button
+                      onClick={() => {
+                        setPreviewDocModal(null);
+                        setDicomFilter("standard");
+                      }}
+                      className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="h-[70vh] bg-slate-50 p-4 flex items-center justify-center overflow-auto">
+                  {isPdf && pdfThumb && dicomFilter !== "standard" ? (
+                    <img
+                      src={activeDocUrl.replace(/\.pdf$/i, ".png")}
+                      alt="Rasterized Document View"
+                      className="max-h-full max-w-full object-contain rounded-2xl border border-slate-200 shadow-lg"
+                    />
+                  ) : (
+                    <iframe
+                      key={activeDocUrl}
+                      src={activeDocUrl}
+                      className="h-full w-full rounded-2xl border border-slate-200"
+                      title="Document Preview"
+                    />
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Cancellation Confirmation Modal with 75% Refund Policy */}
         {cancelModalOpen && appointment && (
@@ -1046,6 +1284,15 @@ function PatientDashboardContent() {
       <EmergencyModal
         isOpen={emergencyModalOpen}
         onClose={() => setEmergencyModalOpen(false)}
+      />
+
+      {/* Patient Auth OTP Modal */}
+      <OtpAuthModal
+        isOpen={isAuthModalOpen}
+        onSuccess={handleLoginSuccess}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialPhone={patientSession?.phone || ""}
+        initialName={patientSession?.name || ""}
       />
 
       <footer className="border-t border-slate-100 bg-white py-6 text-center text-xs text-slate-500">

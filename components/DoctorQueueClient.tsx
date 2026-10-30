@@ -4,6 +4,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { dispatchEarlyMobilizationSms } from "@/lib/sms";
+import {
+  getDicomHighContrastUrl,
+  getDicomNegativeUrl,
+  getHipaaWatermarkedUrl,
+  getPdfThumbnailUrl,
+} from "@/lib/cloudinary";
 
 export type ExtractedMedication = {
   name: string;
@@ -99,17 +105,30 @@ export type AppointmentItem = {
 
 export function isRedAlert(apt?: AppointmentItem | null): boolean {
   if (!apt) return false;
-  return Boolean(
-    apt.urgency_level === "CRITICAL_RED_ALERT" ||
-      apt.parsed_summary?.urgency_level === "CRITICAL_RED_ALERT" ||
-      apt.token?.startsWith("EMG-") ||
-      apt.patient_name?.includes("CRITICAL TRAUMA") ||
+  // UNIVERSAL SIREN ISOLATION:
+  // Regular OPD appointments (MB-*, MB-WALK-*) must NEVER trigger the siren or red alert, regardless of symptoms.
+  // ONLY Roadside SOS emergencies can EVER trigger sirens or red alerts.
+  if (apt.token?.startsWith("MB-")) {
+    return false;
+  }
+
+  const isEmergencyToken = Boolean(apt.token?.startsWith("EMG-"));
+  const isEmergencyName = Boolean(
+    apt.patient_name?.includes("CRITICAL TRAUMA") ||
       apt.patient_name?.includes("CRITICAL ACCIDENT") ||
       apt.patient_name?.includes("INCOMING TRAUMA") ||
-      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY") ||
-      apt.symptoms?.includes("[AMBULANCE DISPATCHED]") ||
+      apt.patient_name?.includes("UNIDENTIFIED ROADSIDE CASUALTY")
+  );
+  const isEmergencySymptom = Boolean(
+    apt.symptoms?.includes("[AMBULANCE DISPATCHED]") ||
       apt.symptoms?.includes("[SELF-ARRIVAL GATE 1]")
   );
+  const isEmergencySource = Boolean(
+    apt.parsed_summary?.source === "ROADSIDE_SOS" ||
+      apt.parsed_summary?.is_emergency === true
+  );
+
+  return isEmergencyToken || isEmergencyName || isEmergencySymptom || isEmergencySource;
 }
 
 /**
@@ -160,6 +179,7 @@ export default function DoctorQueueClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [ehrExportSuccess, setEhrExportSuccess] = useState<string | null>(null);
   const [previewDocModal, setPreviewDocModal] = useState<string | null>(null);
+  const [dicomFilter, setDicomFilter] = useState<"standard" | "contrast" | "inverted" | "hipaa">("standard");
 
   // Early Queue Mobilization state
   const [earlyMobilizeModalOpen, setEarlyMobilizeModalOpen] = useState(false);
@@ -1617,43 +1637,135 @@ export default function DoctorQueueClient({
         </div>
       )}
 
-      {/* Quick Modal Viewer */}
-      {previewDocModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 p-4 bg-slate-950">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>🩻</span>
-                <span>Radiology & Document Quick Inspector</span>
-              </h3>
-              <div className="flex items-center gap-2">
-                <a
-                  href={previewDocModal}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
-                >
-                  Download Original
-                </a>
-                <button
-                  onClick={() => setPreviewDocModal(null)}
-                  className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
-                >
-                  ✕
-                </button>
+      {/* Quick Modal Viewer with Cloudinary Medical Pipeline Filters */}
+      {previewDocModal && (() => {
+        let activeUrl = previewDocModal;
+        if (dicomFilter === "contrast") {
+          activeUrl = getDicomHighContrastUrl(previewDocModal);
+        } else if (dicomFilter === "inverted") {
+          activeUrl = getDicomNegativeUrl(previewDocModal);
+        } else if (dicomFilter === "hipaa") {
+          activeUrl = getHipaaWatermarkedUrl(previewDocModal);
+        }
+
+        const isPdf = previewDocModal.toLowerCase().endsWith(".pdf");
+        const pdfThumbnail = isPdf ? getPdfThumbnailUrl(previewDocModal) : null;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md animate-fadeIn">
+            <div className="max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-800 p-4 bg-slate-950 gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-500/20 text-teal-400 font-black">
+                    🩻
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <span>Radiology & Medical Document Inspector</span>
+                      <span className="rounded-full bg-teal-500/20 px-2 py-0.5 text-[10px] font-black text-teal-300 border border-teal-500/30">
+                        Cloudinary Pipeline Active
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      DICOM contrast enhancement · HIPAA confidentiality watermarking · Multi-page rasterization
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dynamic Filters Bar */}
+                <div className="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setDicomFilter("standard")}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition ${
+                      dicomFilter === "standard"
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDicomFilter("contrast")}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                      dicomFilter === "contrast"
+                        ? "bg-amber-500 text-slate-950 font-black"
+                        : "text-amber-400 hover:text-amber-300"
+                    }`}
+                  >
+                    <span>🩻</span>
+                    <span>High-Contrast DICOM</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDicomFilter("inverted")}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                      dicomFilter === "inverted"
+                        ? "bg-teal-500 text-slate-950 font-black"
+                        : "text-teal-400 hover:text-teal-300"
+                    }`}
+                  >
+                    <span>🔄</span>
+                    <span>Inverted</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDicomFilter("hipaa")}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-bold transition flex items-center gap-1 ${
+                      dicomFilter === "hipaa"
+                        ? "bg-rose-600 text-white"
+                        : "text-rose-400 hover:text-rose-300"
+                    }`}
+                  >
+                    <span>🔒</span>
+                    <span>HIPAA Watermark</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href={activeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-500"
+                  >
+                    Download
+                  </a>
+                  <button
+                    onClick={() => {
+                      setPreviewDocModal(null);
+                      setDicomFilter("standard");
+                    }}
+                    className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Viewer Body */}
+              <div className="h-[75vh] bg-slate-950 p-4 flex items-center justify-center overflow-auto relative">
+                {isPdf && pdfThumbnail && dicomFilter !== "standard" ? (
+                  <img
+                    src={activeUrl.replace(/\.pdf$/i, ".png")}
+                    alt="Rasterized PDF with Filter"
+                    className="max-h-full max-w-full object-contain rounded-xl border border-slate-800 shadow-2xl"
+                  />
+                ) : (
+                  <iframe
+                    key={activeUrl}
+                    src={activeUrl}
+                    className="h-full w-full rounded-2xl border border-slate-800"
+                    title="Document Quick Inspector"
+                  />
+                )}
               </div>
             </div>
-            <div className="h-[75vh] bg-slate-950 p-4 flex items-center justify-center">
-              <iframe
-                src={previewDocModal}
-                className="h-full w-full rounded-2xl border border-slate-800"
-                title="Document Quick Inspector"
-              />
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Feature 3: Early Queue Mobilization Modal */}
       {earlyMobilizeModalOpen && (

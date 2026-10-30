@@ -182,6 +182,22 @@ export default function AppointmentPage() {
 
     // If no date or past date is selected, set it to today
     setDate((prev) => (!prev || prev < formatted ? formatted : prev));
+
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("medibridge_patient_auth");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.phone && parsed.verified) {
+            setPhone(parsed.phone);
+            if (parsed.name) setName(parsed.name);
+            setIsPhoneVerified(true);
+            return;
+          }
+        } catch {}
+      }
+      setIsOtpModalOpen(true);
+    }
   }, []);
 
   const minSelectableDate = minDate;
@@ -424,6 +440,8 @@ export default function AppointmentPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             symptoms: symptoms.trim(),
+            source: "APPOINTMENT_OPD",
+            is_emergency: false,
             prescription_url,
             blood_report_url,
             report_url,
@@ -511,6 +529,7 @@ export default function AppointmentPage() {
           doctorName: doctor,
           paymentMode,
           amount: 500,
+          queueSpot: (slotCounts[time] || 0) + 1,
         });
       } catch (smsErr) {
         console.warn("SMS delivery notification skipped:", smsErr);
@@ -580,10 +599,15 @@ export default function AppointmentPage() {
                   id="patient-name"
                   type="text"
                   required
+                  readOnly={isPhoneVerified && Boolean(name)}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder={t("patient_name_placeholder")}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
+                  className={`mt-2 w-full rounded-2xl border px-4 py-3.5 text-sm font-semibold outline-none transition-all duration-200 ${
+                    isPhoneVerified && Boolean(name)
+                      ? "bg-emerald-50/40 border-emerald-300 text-slate-900 cursor-not-allowed"
+                      : "bg-slate-50/50 border-slate-300 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                  }`}
                 />
               </div>
 
@@ -640,9 +664,18 @@ export default function AppointmentPage() {
                     {t("phone")} <span className="text-rose-500">*</span>
                   </label>
                   {isPhoneVerified ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 border border-emerald-200">
-                      ✓ Phone Verified via OTP
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-black text-emerald-700 border border-emerald-200">
+                        ✓ Phone Verified via OTP
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsOtpModalOpen(true)}
+                        className="text-[10px] font-bold text-teal-700 hover:underline"
+                      >
+                        [Change]
+                      </button>
+                    </div>
                   ) : (
                     <button
                       type="button"
@@ -657,10 +690,15 @@ export default function AppointmentPage() {
                   id="patient-phone"
                   type="tel"
                   required
+                  readOnly={isPhoneVerified}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t("phone_placeholder")}
-                  className="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50/50 px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none transition-all duration-200 focus:border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500"
+                  className={`mt-2 w-full rounded-2xl border px-4 py-3.5 text-sm font-semibold outline-none transition-all duration-200 ${
+                    isPhoneVerified
+                      ? "bg-emerald-50/40 border-emerald-300 text-slate-900 cursor-not-allowed"
+                      : "bg-slate-50/50 border-slate-300 text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500"
+                  }`}
                 />
               </div>
 
@@ -1298,6 +1336,17 @@ export default function AppointmentPage() {
             setName(userData.name);
             setPhone(userData.phone);
             setIsPhoneVerified(true);
+            if (typeof window !== "undefined") {
+              localStorage.setItem(
+                "medibridge_patient_auth",
+                JSON.stringify({
+                  name: userData.name,
+                  phone: userData.phone,
+                  verified: true,
+                  verifiedAt: new Date().toISOString(),
+                })
+              );
+            }
             setErrorMsg("");
           }}
         />

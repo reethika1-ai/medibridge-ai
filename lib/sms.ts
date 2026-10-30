@@ -7,6 +7,7 @@ export interface BookingSmsPayload {
   doctorName: string;
   paymentMode: "ONLINE" | "OFFLINE";
   amount?: number;
+  queueSpot?: number | string;
   earlyMobilization?: boolean;
 }
 
@@ -20,7 +21,9 @@ export async function dispatchBookingSms(payload: BookingSmsPayload) {
       ? "Mode: ONLINE (₹500 Paid - 75% refund policy if cancelled >3 hrs prior)."
       : "Mode: OFFLINE (₹500 payable at Hospital OPD Counter on arrival).";
 
-  const message = `MediBridge AI Confirmation: Hello ${payload.patientName}, your token #${payload.token} is confirmed with ${payload.doctorName} on ${payload.date} at ${payload.timeSlot}. ${paymentDetails} IMPORTANT: Please arrive at the hospital 20 minutes prior to your slot (${payload.timeSlot}) for express triage check-in.`;
+  const spotNotice = payload.queueSpot ? `Queue Spot: #${payload.queueSpot} in this slot.` : "";
+
+  const message = `MediBridge AI Confirmation: Hello ${payload.patientName}, your token #${payload.token} is confirmed with ${payload.doctorName} on ${payload.date} at ${payload.timeSlot}. ${spotNotice} ${paymentDetails} IMPORTANT: Please arrive at the hospital 20 minutes prior to your slot (${payload.timeSlot}) for express triage check-in.`;
 
   console.log(`[SMS DISPATCHED to ${payload.phone}]:\n${message}`);
 

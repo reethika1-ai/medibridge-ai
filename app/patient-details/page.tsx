@@ -190,6 +190,8 @@ function PatientDetailsForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symptoms: symptoms.trim(),
+          source: "APPOINTMENT_OPD",
+          is_emergency: false,
           prescription_url,
           blood_report_url,
           report_url,
@@ -236,6 +238,8 @@ function PatientDetailsForm() {
         body: JSON.stringify({
           token: token.trim(),
           symptoms: symptoms.trim(),
+          source: "APPOINTMENT_OPD",
+          is_emergency: false,
           summary: generatedSummary,
           urgent: generatedSummary.urgent_flag,
           prescription_url,

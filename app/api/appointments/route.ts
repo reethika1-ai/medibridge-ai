@@ -6,11 +6,19 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const token = searchParams.get("token");
+    const phone = searchParams.get("phone");
 
     let query = supabase.from("appointments").select("*");
 
-    if (token) {
+    if (token && phone) {
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+      query = query.eq("token", token).or(`phone.ilike.%${cleanPhone}%,summary.ilike.%"phone":"%${cleanPhone}%"`);
+    } else if (token) {
       query = query.eq("token", token);
+    } else if (phone) {
+      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+      query = query.or(`phone.ilike.%${cleanPhone}%,summary.ilike.%"phone":"%${cleanPhone}%"`);
+      query = query.order("created_at", { ascending: false });
     } else {
       query = query
         .order("urgent", { ascending: false })

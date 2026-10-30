@@ -218,6 +218,8 @@ export async function processClinicalTriage(body: {
   prescription_text?: string | null;
   report_text?: string | null;
   blood_report_text?: string | null;
+  source?: string | null;
+  is_emergency?: boolean | null;
   patient_info?: {
     name?: string;
     age?: number | string;
@@ -226,6 +228,7 @@ export async function processClinicalTriage(body: {
     department?: string;
   };
 }): Promise<TriageOutput> {
+  const isRoadsideEmergency = body.source === "ROADSIDE_SOS" || body.is_emergency === true;
   const symptoms = String(body.symptoms ?? "").trim();
   const prescriptionUrl = body.prescription_url || null;
   const reportUrl = body.report_url || body.document_url || null;
@@ -434,7 +437,7 @@ Imaging / X-Ray Detected Status: ${isImagingDetected ? "YES (Imaging Attached)" 
         "Tab. Atorvastatin 80 mg OD",
         "Tab. Pantoprazole 40 mg OD empty stomach",
       ];
-      urgencyLevel = keywordUrgent ? "CRITICAL_RED_ALERT" : "URGENT";
+      urgencyLevel = keywordUrgent && isRoadsideEmergency ? "CRITICAL_RED_ALERT" : "URGENT";
       inDepthNarrative = `Patient presents with acute thoracic presentation suggestive of cardiopulmonary strain. Symptom presentation of "${symptoms}" warrants immediate hemodynamic stabilization. Differential considerations include ischemic coronary syndrome versus secondary esophageal or musculoskeletal etiologies. Serial troponin and rhythm telemetry are urgently indicated. Physician assessment required. AI generated differential analysis.`;
     } else if (
       combinedClinicalText.includes("cough") ||
@@ -731,10 +734,12 @@ Imaging / X-Ray Detected Status: ${isImagingDetected ? "YES (Imaging Attached)" 
   });
 
   const rawUrgency = String(rawJsonResult.urgency_level || "").toUpperCase();
+  // UNIVERSAL SIREN ISOLATION:
+  // Regular OPD appointments must NEVER receive CRITICAL_RED_ALERT. Only Roadside SOS emergencies can.
   const urgencyLevel: "ROUTINE" | "URGENT" | "CRITICAL_RED_ALERT" =
-    rawUrgency.includes("CRITICAL") || rawUrgency.includes("RED")
+    (rawUrgency.includes("CRITICAL") || rawUrgency.includes("RED")) && isRoadsideEmergency
       ? "CRITICAL_RED_ALERT"
-      : rawUrgency.includes("URGENT") || keywordUrgent
+      : rawUrgency.includes("URGENT") || rawUrgency.includes("CRITICAL") || keywordUrgent
       ? "URGENT"
       : "ROUTINE";
 

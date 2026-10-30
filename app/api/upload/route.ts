@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
 import { extractOcrFromUrl } from "@/lib/sarvam";
+import { getOcrPreprocessedUrl, getMedicalPipelineBundle } from "@/lib/cloudinary";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -69,23 +70,33 @@ export async function POST(request: Request) {
       resource_type: "auto",
     });
 
-    // Extract text via Sarvam AI OCR with timeout protection
+    // Extract text via Sarvam AI OCR with Cloudinary pre-processing enhancement
     let extractedText = "";
     try {
       const filename = docType === "prescription" ? "prescription.png" : "medical_report.png";
+      const ocrTargetUrl =
+        docType === "prescription"
+          ? getOcrPreprocessedUrl(uploadResponse.secure_url)
+          : uploadResponse.secure_url;
+
       extractedText = await Promise.race([
-        extractOcrFromUrl(uploadResponse.secure_url, filename),
+        extractOcrFromUrl(ocrTargetUrl, filename),
         new Promise<string>((resolve) => setTimeout(() => resolve(""), 4000)),
       ]);
     } catch {
       extractedText = "";
     }
 
+    const bundle = getMedicalPipelineBundle(uploadResponse.secure_url, docType);
+
     return NextResponse.json({
       ok: true,
       public_id: uploadResponse.public_id,
       secure_url: uploadResponse.secure_url,
       url: uploadResponse.secure_url,
+      thumbnail_url: bundle.thumbnail,
+      dicom_contrast_url: bundle.dicom_high_contrast,
+      hipaa_watermarked_url: bundle.hipaa_watermarked,
       bytes: uploadResponse.bytes,
       format: uploadResponse.format,
       doc_type: docType,
