@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useLanguage } from "@/context/LanguageContext";
 import OtpAuthModal from "@/components/OtpAuthModal";
-import { dispatchBookingSms } from "@/lib/sms";
+import { sendBookingConfirmationSms, dispatchBookingSms } from "@/lib/sms";
 
 const departmentDoctors: Record<string, string[]> = {
   Cardiology: [
@@ -518,21 +518,20 @@ export default function AppointmentPage() {
         localStorage.setItem("medibridge_last_token", token);
       }
 
-      // Dispatch automated SMS confirmation with 20-min early arrival notice
+      // Dispatch automated Fast2SMS booking confirmation with 20-min advance arrival notice
       try {
-        await dispatchBookingSms({
+        const computedSpot = (slotCounts[time] || 0) + 1;
+        await sendBookingConfirmationSms({
           phone: phone.trim(),
           patientName: name.trim(),
           token,
+          doctorName: doctor,
           date,
           timeSlot: time,
-          doctorName: doctor,
-          paymentMode,
-          amount: 500,
-          queueSpot: (slotCounts[time] || 0) + 1,
+          queueSpot: computedSpot,
         });
       } catch (smsErr) {
-        console.warn("SMS delivery notification skipped:", smsErr);
+        console.warn("Fast2SMS delivery notification skipped:", smsErr);
       }
 
       router.push(

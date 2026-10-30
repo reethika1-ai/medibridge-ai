@@ -5,36 +5,87 @@ export interface BookingSmsPayload {
   date: string;
   timeSlot: string;
   doctorName: string;
-  paymentMode: "ONLINE" | "OFFLINE";
+  paymentMode?: "ONLINE" | "OFFLINE";
   amount?: number;
   queueSpot?: number | string;
   earlyMobilization?: boolean;
 }
 
+export interface BookingConfirmationParams {
+  phone: string;
+  patientName: string;
+  token: string;
+  doctorName: string;
+  date: string;
+  timeSlot: string;
+  queueSpot: number | string;
+}
+
 /**
- * Dispatches simulated SMS confirmation for patient appointment booking
- * and triggers browser notifications if permission is granted.
+ * Dispatches production booking confirmation SMS with 20-minute advance arrival notice via Fast2SMS
  */
-export async function dispatchBookingSms(payload: BookingSmsPayload) {
-  const paymentDetails =
-    payload.paymentMode === "ONLINE"
-      ? "Mode: ONLINE (₹500 Paid - 75% refund policy if cancelled >3 hrs prior)."
-      : "Mode: OFFLINE (₹500 payable at Hospital OPD Counter on arrival).";
+export async function sendBookingConfirmationSms({
+  phone,
+  patientName,
+  token,
+  doctorName,
+  date,
+  timeSlot,
+  queueSpot,
+}: BookingConfirmationParams) {
+  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+  const message = `MediBridge AI Confirmation: Hello ${patientName}, your consultation token #${token} is CONFIRMED with ${doctorName} on ${date} at ${timeSlot}. Queue Spot: #${queueSpot}. IMPORTANT: Please arrive at the hospital 20 minutes prior to your scheduled time slot for express triage check-in.`;
 
-  const spotNotice = payload.queueSpot ? `Queue Spot: #${payload.queueSpot} in this slot.` : "";
+  console.log(`[SMS DISPATCHED to ${cleanPhone}]:\n${message}`);
 
-  const message = `MediBridge AI Confirmation: Hello ${payload.patientName}, your token #${payload.token} is confirmed with ${payload.doctorName} on ${payload.date} at ${payload.timeSlot}. ${spotNotice} ${paymentDetails} IMPORTANT: Please arrive at the hospital 20 minutes prior to your slot (${payload.timeSlot}) for express triage check-in.`;
+  // Server context: direct Fast2SMS dispatch
+  const fast2SmsKey = process.env.FAST2SMS_API_KEY;
+  if (fast2SmsKey) {
+    try {
+      await fetch("https://www.fast2sms.com/dev/bulkV2", {
+        method: "POST",
+        headers: {
+          authorization: fast2SmsKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          route: "q",
+          message: message,
+          numbers: cleanPhone,
+        }),
+      });
+    } catch (err) {
+      console.error("Fast2SMS API direct dispatch error:", err);
+    }
+  } else if (typeof window !== "undefined") {
+    // Client browser context: route through secure backend endpoint
+    try {
+      await fetch("/api/sms/confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: cleanPhone,
+          patientName,
+          token,
+          doctorName,
+          date,
+          timeSlot,
+          queueSpot,
+        }),
+      });
+    } catch (err) {
+      console.warn("Client SMS confirmation route error:", err);
+    }
+  }
 
-  console.log(`[SMS DISPATCHED to ${payload.phone}]:\n${message}`);
-
-  // Browser desktop notification fallback for real-time delivery feel
+  // Browser desktop notification fallback for immediate user feedback
   if (
     typeof window !== "undefined" &&
     "Notification" in window &&
     Notification.permission === "granted"
   ) {
     try {
-      new Notification("MediBridge SMS Delivered", {
+      new Notification("MediBridge Booking Confirmed", {
         body: message,
         icon: "/favicon.ico",
       });
@@ -47,6 +98,21 @@ export async function dispatchBookingSms(payload: BookingSmsPayload) {
 }
 
 /**
+ * Backward-compatible dispatch helper for booking flows
+ */
+export async function dispatchBookingSms(payload: BookingSmsPayload) {
+  return sendBookingConfirmationSms({
+    phone: payload.phone,
+    patientName: payload.patientName,
+    token: payload.token,
+    doctorName: payload.doctorName,
+    date: payload.date,
+    timeSlot: payload.timeSlot,
+    queueSpot: payload.queueSpot || 1,
+  });
+}
+
+/**
  * Dispatches SMS notification for Early Queue Mobilization
  */
 export async function dispatchEarlyMobilizationSms(
@@ -55,9 +121,30 @@ export async function dispatchEarlyMobilizationSms(
   token: string,
   slot: string
 ) {
+  const cleanPhone = phone.replace(/\D/g, "").slice(-10);
   const message = `⚡ MediBridge Early Queue Alert: Dear ${patientName} (Token #${token}), the attending physician is running ahead of schedule for your ${slot} slot. You are invited to arrive immediately for priority express consultation!`;
 
-  console.log(`[EARLY MOBILIZATION SMS to ${phone}]:\n${message}`);
+  console.log(`[EARLY MOBILIZATION SMS to ${cleanPhone}]:\n${message}`);
+
+  const fast2SmsKey = process.env.FAST2SMS_API_KEY;
+  if (fast2SmsKey) {
+    try {
+      await fetch("https://www.fast2sms.com/dev/bulkV2", {
+        method: "POST",
+        headers: {
+          authorization: fast2SmsKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          route: "q",
+          message: message,
+          numbers: cleanPhone,
+        }),
+      });
+    } catch (err) {
+      console.error("Fast2SMS Early Mobilization dispatch error:", err);
+    }
+  }
 
   if (
     typeof window !== "undefined" &&
@@ -76,4 +163,3 @@ export async function dispatchEarlyMobilizationSms(
 
   return { success: true, message };
 }
-
