@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import DoctorQueueClient, { AppointmentItem, isRedAlert } from "@/components/DoctorQueueClient";
+import DoctorAuthGuard from "@/components/DoctorAuthGuard";
 import { useLanguage } from "@/context/LanguageContext";
 
 interface HospitalPortalClientProps {
@@ -351,7 +352,9 @@ export default function HospitalPortalClient({
       {/* ======================================================== */}
       {activeTab === "doctor" && (
         <div className="animate-fadeIn">
-          <DoctorQueueClient initialAppointments={appointments} />
+          <DoctorAuthGuard>
+            <DoctorQueueClient initialAppointments={appointments} />
+          </DoctorAuthGuard>
         </div>
       )}
 

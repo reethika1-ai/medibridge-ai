@@ -28,6 +28,9 @@ export default function DoctorLoginPage() {
       }
 
       if (res.ok || res.status === 200) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("mb_doctor_auth", "true");
+        }
         window.location.href = "/hospital?tab=doctor";
       }
     } catch (err) {
@@ -83,15 +86,25 @@ export default function DoctorLoginPage() {
                   className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-800/80 px-4 py-3.5 text-sm font-semibold text-white outline-none transition-all duration-200 placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/50"
                 />
 
-                <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400">
-                  <span>Authorized Passkey:</span>
-                  <button
-                    type="button"
-                    onClick={() => setPasskey("medibridge2026")}
-                    className="font-mono font-bold text-blue-400 hover:text-blue-300 underline"
-                  >
-                    medibridge2026 (Autofill)
-                  </button>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-1 text-xs text-slate-400">
+                  <span>Demo Clinician PIN:</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPasskey("DOC108")}
+                      className="font-mono font-bold text-teal-400 hover:text-teal-300 underline"
+                    >
+                      DOC108 (Autofill)
+                    </button>
+                    <span>·</span>
+                    <button
+                      type="button"
+                      onClick={() => setPasskey("medibridge2026")}
+                      className="font-mono font-bold text-blue-400 hover:text-blue-300 underline"
+                    >
+                      medibridge2026
+                    </button>
+                  </div>
                 </div>
               </div>
 

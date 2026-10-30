@@ -432,9 +432,12 @@ export default function DoctorQueueClient({
   }
 
   async function handleLogout() {
-    await fetch("/api/doctor-login", { method: "DELETE" });
-    router.push("/doctor-login");
-    router.refresh();
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("mb_doctor_auth");
+      sessionStorage.setItem("mb_doctor_auth", "false");
+    }
+    await fetch("/api/doctor-login", { method: "DELETE" }).catch(() => {});
+    window.location.reload();
   }
 
   // STEP 4: Normalized search so numeric strings (e.g. "406695") match "MB-406695" and vice versa
@@ -692,9 +695,11 @@ export default function DoctorQueueClient({
 
           <button
             onClick={handleLogout}
-            className="rounded-2xl border border-slate-800 bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-slate-300 shadow-xs transition hover:bg-slate-800 hover:text-white active:scale-95"
+            className="flex items-center gap-1.5 rounded-2xl border border-rose-500/30 bg-rose-950/40 px-3.5 py-2.5 text-xs font-bold text-rose-300 shadow-xs transition hover:bg-rose-900/60 hover:text-white active:scale-95"
+            title="Sign out and lock clinical console"
           >
-            Sign Out
+            <span>🔒</span>
+            <span>Sign Out / Lock Console</span>
           </button>
         </div>
       </div>
