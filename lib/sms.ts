@@ -39,21 +39,15 @@ export async function sendBookingConfirmationSms({
   console.log(`[SMS DISPATCHED to ${cleanPhone}]:\n${message}`);
 
   // Server context: direct Fast2SMS dispatch
-  const fast2SmsKey = process.env.FAST2SMS_API_KEY;
+  const fast2SmsKey = process.env.FAST2SMS_API_KEY?.trim();
   if (fast2SmsKey) {
     try {
-      await fetch("https://www.fast2sms.com/dev/bulkV2", {
-        method: "POST",
-        headers: {
-          authorization: fast2SmsKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          route: "q",
-          message: message,
-          numbers: cleanPhone,
-        }),
-      });
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(
+        fast2SmsKey
+      )}&route=q&message=${encodeURIComponent(message)}&numbers=${cleanPhone}`;
+      const res = await fetch(url, { method: "GET" });
+      const data = await res.json().catch(() => ({}));
+      console.log(`[Fast2SMS Server Booking Dispatch to ${cleanPhone}]:`, data);
     } catch (err) {
       console.error("Fast2SMS API direct dispatch error:", err);
     }
@@ -126,21 +120,15 @@ export async function dispatchEarlyMobilizationSms(
 
   console.log(`[EARLY MOBILIZATION SMS to ${cleanPhone}]:\n${message}`);
 
-  const fast2SmsKey = process.env.FAST2SMS_API_KEY;
+  const fast2SmsKey = process.env.FAST2SMS_API_KEY?.trim();
   if (fast2SmsKey) {
     try {
-      await fetch("https://www.fast2sms.com/dev/bulkV2", {
-        method: "POST",
-        headers: {
-          authorization: fast2SmsKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          route: "q",
-          message: message,
-          numbers: cleanPhone,
-        }),
-      });
+      const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(
+        fast2SmsKey
+      )}&route=q&message=${encodeURIComponent(message)}&numbers=${cleanPhone}`;
+      const res = await fetch(url, { method: "GET" });
+      const data = await res.json().catch(() => ({}));
+      console.log(`[Fast2SMS Server Early Mobilization to ${cleanPhone}]:`, data);
     } catch (err) {
       console.error("Fast2SMS Early Mobilization dispatch error:", err);
     }

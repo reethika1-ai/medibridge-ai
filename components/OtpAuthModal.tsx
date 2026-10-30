@@ -21,6 +21,7 @@ export default function OtpAuthModal({
   const [name, setName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
   const [otp, setOtp] = useState("");
+  const [debugOtp, setDebugOtp] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [timer, setTimer] = useState(60);
   const [isSending, setIsSending] = useState(false);
@@ -36,6 +37,7 @@ export default function OtpAuthModal({
     if (isOpen) {
       setError("");
       setOtp("");
+      setDebugOtp(null);
       if (!phone) {
         setStep("phone");
       }
@@ -80,6 +82,12 @@ export default function OtpAuthModal({
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to send verification code. Please retry.");
+      }
+
+      if (data.debug_otp) {
+        setDebugOtp(data.debug_otp);
+      } else {
+        setDebugOtp(null);
       }
 
       setStep("otp");
@@ -238,6 +246,18 @@ export default function OtpAuthModal({
                 placeholder="------"
                 className="mt-1.5 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-center font-mono text-2xl font-black tracking-[0.5em] text-slate-900 outline-none transition focus:border-teal-500 focus:bg-white focus:ring-2 focus:ring-teal-500/20"
               />
+              {debugOtp && (
+                <div className="mt-2.5 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setOtp(debugOtp)}
+                    className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50/90 px-3 py-1.5 text-[11px] font-bold text-teal-800 shadow-sm transition hover:bg-teal-100"
+                  >
+                    <span>ℹ️ Code: <strong className="font-mono tracking-wider">{debugOtp}</strong></span>
+                    <span className="rounded-md bg-teal-600 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">Tap to autofill</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-500">

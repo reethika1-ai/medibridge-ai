@@ -12,22 +12,14 @@ export async function POST(req: Request) {
 
     const message = `MediBridge AI Confirmation: Hello ${patientName}, your consultation token #${token} is CONFIRMED with ${doctorName} on ${date} at ${timeSlot}. Queue Spot: #${queueSpot}. IMPORTANT: Please arrive at the hospital 20 minutes prior to your scheduled time slot for express triage check-in.`;
 
-    const fast2SmsKey = process.env.FAST2SMS_API_KEY;
+    const fast2SmsKey = process.env.FAST2SMS_API_KEY?.trim();
     if (fast2SmsKey) {
       try {
-        const smsRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
-          method: "POST",
-          headers: {
-            authorization: fast2SmsKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            route: "q",
-            message: message,
-            numbers: cleanPhone,
-          }),
-        });
+        const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(
+          fast2SmsKey
+        )}&route=q&message=${encodeURIComponent(message)}&numbers=${cleanPhone}`;
 
+        const smsRes = await fetch(url, { method: "GET" });
         const smsData = await smsRes.json().catch(() => ({}));
         console.log(`[Fast2SMS Confirmation to ${cleanPhone}]:`, smsData);
       } catch (smsErr) {
@@ -44,4 +36,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-
