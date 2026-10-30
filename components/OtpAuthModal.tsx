@@ -128,6 +128,9 @@ export default function OtpAuthModal({
         throw new Error(data.error || "Invalid or expired OTP. Please check and try again.");
       }
 
+      setOtp("");
+      setError("");
+      setDebugOtp(null);
       const formattedPhone = cleanPhone.startsWith("+91") ? cleanPhone : `+91 ${cleanPhone}`;
       onSuccess({
         name: name.trim(),
@@ -148,7 +151,12 @@ export default function OtpAuthModal({
       <div className="relative w-full max-w-md overflow-hidden rounded-[2.2rem] border border-slate-100 bg-white p-7 sm:p-8 shadow-2xl">
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={() => {
+            setError("");
+            setOtp("");
+            setDebugOtp(null);
+            onClose();
+          }}
           className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500 hover:bg-slate-200 hover:text-slate-900 transition"
         >
           ✕
