@@ -5,6 +5,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 
+type BiomarkerItem = {
+  name?: string;
+  parameter?: string;
+  value: string;
+  reference?: string;
+  reference_range?: string;
+  status: "Normal" | "High" | "Low" | "Critical" | "NORMAL" | "HIGH" | "LOW";
+};
+
 type AiSummaryData = {
   chief_complaint: string;
   key_information: string[];
@@ -14,7 +23,13 @@ type AiSummaryData = {
   extracted_medications?: Array<{ name: string; dosage?: string; frequency?: string }> | string[];
   diagnostic_findings?: string;
   urgency_level?: string;
+  suspected_conditions?: string[];
+  recommended_investigations?: string[];
+  recommended_medications?: string[];
+  biomarkers?: BiomarkerItem[];
+  laboratory_biomarkers?: BiomarkerItem[];
   prescription_url?: string | null;
+  blood_report_url?: string | null;
   report_url?: string | null;
   document_url?: string | null;
 };
@@ -26,13 +41,17 @@ function PatientDetailsForm() {
   const [token, setToken] = useState<string>(initialToken);
   const [symptoms, setSymptoms] = useState<string>("");
 
-  // Dual File Upload States
+  // Triple Document Upload States
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
+  const [bloodReportFile, setBloodReportFile] = useState<File | null>(null);
   const [reportFile, setReportFile] = useState<File | null>(null);
+
   const [isRxDragging, setIsRxDragging] = useState<boolean>(false);
+  const [isBloodDragging, setIsBloodDragging] = useState<boolean>(false);
   const [isReportDragging, setIsReportDragging] = useState<boolean>(false);
 
   const rxInputRef = useRef<HTMLInputElement>(null);
+  const bloodInputRef = useRef<HTMLInputElement>(null);
   const reportInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -64,6 +83,17 @@ function PatientDetailsForm() {
     setPrescriptionFile(selectedFile);
   }
 
+  function handleBloodSelect(selectedFile: File | null) {
+    if (!selectedFile) return;
+    const err = validateFile(selectedFile);
+    if (err) {
+      setErrorMsg(`Blood Report: ${err}`);
+      return;
+    }
+    setErrorMsg("");
+    setBloodReportFile(selectedFile);
+  }
+
   function handleReportSelect(selectedFile: File | null) {
     if (!selectedFile) return;
     const err = validateFile(selectedFile);
@@ -75,7 +105,7 @@ function PatientDetailsForm() {
     setReportFile(selectedFile);
   }
 
-  async function uploadFileToCloudinary(file: File, docType: "prescription" | "report") {
+  async function uploadFileToCloudinary(file: File, docType: "prescription" | "report" | "blood_report") {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("token", token.trim());
@@ -120,6 +150,10 @@ function PatientDetailsForm() {
       let prescription_public_id: string | null = null;
       let prescription_text = "";
 
+      let blood_report_url: string | null = null;
+      let blood_report_public_id: string | null = null;
+      let blood_report_text = "";
+
       let report_url: string | null = null;
       let report_public_id: string | null = null;
       let report_text = "";
@@ -132,6 +166,14 @@ function PatientDetailsForm() {
         prescription_text = rxUpload.extracted_text;
       }
 
+      if (bloodReportFile) {
+        setLoadingStep("Uploading recent blood report to Cloudinary vault...");
+        const bloodUpload = await uploadFileToCloudinary(bloodReportFile, "blood_report");
+        blood_report_url = bloodUpload.secure_url;
+        blood_report_public_id = bloodUpload.public_id;
+        blood_report_text = bloodUpload.extracted_text;
+      }
+
       if (reportFile) {
         setLoadingStep("Uploading medical report/scan to Cloudinary vault...");
         const repUpload = await uploadFileToCloudinary(reportFile, "report");
@@ -140,37 +182,48 @@ function PatientDetailsForm() {
         report_text = repUpload.extracted_text;
       }
 
-      const document_url = report_url || prescription_url || null;
+      const document_url = report_url || blood_report_url || prescription_url || null;
 
-      setLoadingStep("Synthesizing deep clinical intake with xAI Grok...");
+      setLoadingStep("Synthesizing deep clinical differential with AI Engine...");
       const triageRes = await fetch("/api/triage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           symptoms: symptoms.trim(),
           prescription_url,
+          blood_report_url,
           report_url,
           document_url,
           prescription_text,
+          blood_report_text,
           report_text,
         }),
       });
 
       const triageData = await triageRes.json();
       if (!triageRes.ok) {
-        throw new Error(triageData.error || "Grok triage analysis failed.");
+        throw new Error(triageData.error || "Clinical triage analysis failed.");
       }
 
       const generatedSummary: AiSummaryData = {
-        chief_complaint: triageData.chief_complaint,
-        key_information: triageData.key_information || [],
-        summary: triageData.summary,
-        urgent_flag: triageData.urgency_level === "Urgent" || Boolean(triageData.urgent_flag),
-        clinical_observations: triageData.clinical_observations,
+        chief_complaint: triageData.primary_presentation || triageData.chief_complaint,
+        key_information: triageData.suspected_conditions || triageData.key_information || [],
+        summary: triageData.in_depth_narrative || triageData.summary,
+        urgent_flag:
+          triageData.urgency_level === "URGENT" ||
+          triageData.urgency_level === "CRITICAL_RED_ALERT" ||
+          triageData.urgency_level === "Urgent" ||
+          Boolean(triageData.urgent_flag),
+        clinical_observations: triageData.in_depth_narrative || triageData.clinical_observations,
         extracted_medications: triageData.extracted_medications || [],
         diagnostic_findings: triageData.diagnostic_findings,
         urgency_level: triageData.urgency_level,
+        suspected_conditions: triageData.suspected_conditions || [],
+        recommended_investigations: triageData.recommended_investigations || [],
+        recommended_medications: triageData.recommended_medications || [],
+        biomarkers: triageData.biomarkers || triageData.laboratory_biomarkers || [],
         prescription_url,
+        blood_report_url,
         report_url,
         document_url,
       };
@@ -186,9 +239,11 @@ function PatientDetailsForm() {
           summary: generatedSummary,
           urgent: generatedSummary.urgent_flag,
           prescription_url,
+          blood_report_url,
           report_url,
           document_url,
-          report_public_id: report_public_id || prescription_public_id || null,
+          report_public_id:
+            report_public_id || blood_report_public_id || prescription_public_id || null,
           status: "Waiting",
         }),
       });
@@ -198,7 +253,7 @@ function PatientDetailsForm() {
         throw new Error(patchData.error || "Failed to sync intake record to Supabase.");
       }
 
-      setSuccessMsg("Consultation records, dual Cloudinary documents, and Grok AI summary saved successfully!");
+      setSuccessMsg("Consultation records, encrypted documents, and AI triage summary saved successfully!");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
@@ -208,46 +263,34 @@ function PatientDetailsForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-tr from-slate-50 via-blue-50/30 to-indigo-50/20 text-slate-900 flex flex-col justify-between selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6">
-        <Link
-          href="/patient/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 transition hover:text-blue-800"
-        >
-          ← Return to Patient Dashboard
-        </Link>
-
-        <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200/90 bg-white p-7 shadow-xl shadow-blue-500/5 sm:p-10">
+      <main className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-slate-200/90 bg-white p-6 shadow-xl sm:p-10">
           <div className="border-b border-slate-100 pb-6">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-blue-700 border border-blue-200/60">
-                Step 2 of Consultation
-              </span>
-              {token && (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-mono font-bold text-slate-700">
-                  Token: {token}
-                </span>
-              )}
-            </div>
-            <h1 className="mt-3 text-3xl font-black text-slate-900 sm:text-4xl">
-              Document Vault & Deep AI Intake
+            <span className="text-xs font-black uppercase tracking-wider text-blue-700">
+              Patient Intake & Documentation Portal
+            </span>
+            <h1 className="mt-1 text-2xl font-black text-slate-900 sm:text-3xl">
+              Attach Medical Records & Lab Reports
             </h1>
-            <p className="mt-2 text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Upload past prescriptions and lab reports/scans to the Cloudinary vault for Sarvam AI OCR digitization and xAI Grok clinical triage.
+            <p className="mt-2 text-sm text-slate-500">
+              Provide your token and describe current symptoms. Attach handwritten prescriptions, recent blood reports (CBC/LFT/KFT), or radiology scans for instant AI differential analysis.
             </p>
           </div>
 
           {errorMsg && (
-            <div className="mt-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
-              {errorMsg}
+            <div className="mt-6 flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-xs font-bold text-rose-800">
+              <span className="text-lg">⚠️</span>
+              <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-xs font-bold text-emerald-800">
-              ✓ {successMsg}
+            <div className="mt-6 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-xs font-bold text-emerald-800">
+              <span className="text-lg">✓</span>
+              <span>{successMsg}</span>
             </div>
           )}
 
@@ -287,16 +330,16 @@ function PatientDetailsForm() {
               />
             </div>
 
-            {/* DUAL GLASSMORPHIC FILE UPLOADS */}
+            {/* TRIPLE GLASSMORPHIC FILE UPLOADS */}
             <div className="border-t border-slate-100 pt-6">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                Attach Medical Files (Prescriptions & Lab Reports / Scans)
+                Attach Medical Files (Prescriptions, Blood Reports & Radiology Scans)
               </label>
               <p className="mt-1 text-xs text-slate-400">
                 Files are stored encrypted in the Cloudinary healthcare vault and parsed with Sarvam AI OCR.
               </p>
 
-              <div className="mt-4 grid gap-6 md:grid-cols-2">
+              <div className="mt-4 grid gap-4 md:grid-cols-3">
                 {/* 1. Previous Prescriptions */}
                 <div className="rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-blue-50/20 to-slate-50/40 p-5 shadow-xs">
                   <div className="flex items-center justify-between">
@@ -324,7 +367,7 @@ function PatientDetailsForm() {
                       handleRxSelect(e.dataTransfer.files?.[0] || null);
                     }}
                     onClick={() => rxInputRef.current?.click()}
-                    className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
+                    className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
                       isRxDragging
                         ? "border-blue-500 bg-blue-50/80"
                         : prescriptionFile
@@ -342,7 +385,7 @@ function PatientDetailsForm() {
                     {prescriptionFile ? (
                       <div className="space-y-1">
                         <span className="text-xl">✓</span>
-                        <p className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
+                        <p className="text-xs font-bold text-slate-900 truncate max-w-[180px]">
                           {prescriptionFile.name}
                         </p>
                         <p className="text-[10px] text-slate-500">
@@ -372,18 +415,93 @@ function PatientDetailsForm() {
                   )}
                 </div>
 
-                {/* 2. Medical Reports & Scans */}
+                {/* 2. Recent Blood Reports */}
+                <div className="rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-slate-50/40 p-5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🩸</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Recent Blood Reports</h4>
+                        <p className="text-[10px] text-slate-400">CBC, LFT, KFT, Lipids</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60">
+                      Biomarkers
+                    </span>
+                  </div>
+
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsBloodDragging(true);
+                    }}
+                    onDragLeave={() => setIsBloodDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsBloodDragging(false);
+                      handleBloodSelect(e.dataTransfer.files?.[0] || null);
+                    }}
+                    onClick={() => bloodInputRef.current?.click()}
+                    className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
+                      isBloodDragging
+                        ? "border-rose-500 bg-rose-50/80"
+                        : bloodReportFile
+                        ? "border-rose-400 bg-rose-50/40"
+                        : "border-slate-300 bg-white/70 hover:border-rose-400 hover:bg-rose-50/30"
+                    }`}
+                  >
+                    <input
+                      ref={bloodInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                      onChange={(e) => handleBloodSelect(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                    {bloodReportFile ? (
+                      <div className="space-y-1">
+                        <span className="text-xl">✓</span>
+                        <p className="text-xs font-bold text-slate-900 truncate max-w-[180px]">
+                          {bloodReportFile.name}
+                        </p>
+                        <p className="text-[10px] text-slate-500">
+                          {(bloodReportFile.size / (1024 * 1024)).toFixed(2)} MB
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <span className="text-xl text-slate-400">🩸</span>
+                        <p className="text-xs font-bold text-slate-800">Select blood report</p>
+                        <p className="text-[10px] text-slate-400">PDF, JPG, PNG up to 10MB</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {bloodReportFile && (
+                    <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-100">
+                      <span className="text-[11px] font-semibold text-rose-700">✓ Ready</span>
+                      <button
+                        type="button"
+                        onClick={() => setBloodReportFile(null)}
+                        className="text-xs font-bold text-rose-600 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Medical Reports & Scans */}
                 <div className="rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-indigo-50/20 to-slate-50/40 p-5 shadow-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🩻</span>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">Medical Reports & Scans</h4>
-                        <p className="text-[10px] text-slate-400">Lab panels, X-rays, MRI</p>
+                        <h4 className="text-xs font-bold text-slate-900">Radiology & Scans</h4>
+                        <p className="text-[10px] text-slate-400">X-rays, CT, MRI, USG</p>
                       </div>
                     </div>
                     <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
-                      Imaging / Lab
+                      Imaging
                     </span>
                   </div>
 
@@ -399,7 +517,7 @@ function PatientDetailsForm() {
                       handleReportSelect(e.dataTransfer.files?.[0] || null);
                     }}
                     onClick={() => reportInputRef.current?.click()}
-                    className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
+                    className={`mt-3 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
                       isReportDragging
                         ? "border-indigo-500 bg-indigo-50/80"
                         : reportFile
@@ -417,7 +535,7 @@ function PatientDetailsForm() {
                     {reportFile ? (
                       <div className="space-y-1">
                         <span className="text-xl">✓</span>
-                        <p className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
+                        <p className="text-xs font-bold text-slate-900 truncate max-w-[180px]">
                           {reportFile.name}
                         </p>
                         <p className="text-[10px] text-slate-500">
@@ -427,7 +545,7 @@ function PatientDetailsForm() {
                     ) : (
                       <div className="space-y-1">
                         <span className="text-xl text-slate-400">📁</span>
-                        <p className="text-xs font-bold text-slate-800">Select lab / scan file</p>
+                        <p className="text-xs font-bold text-slate-800">Select scan / report</p>
                         <p className="text-[10px] text-slate-400">PDF, JPG, PNG, DICOM</p>
                       </div>
                     )}
@@ -459,7 +577,7 @@ function PatientDetailsForm() {
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    <span>{loadingStep || "Processing with xAI Grok..."}</span>
+                    <span>{loadingStep || "Processing with AI Clinical Engine..."}</span>
                   </span>
                 ) : (
                   "Generate AI Triage & Sync with Supabase →"
@@ -468,20 +586,20 @@ function PatientDetailsForm() {
             </div>
           </form>
 
-          {/* AI Clinical Summary Display with Visual Blocks & Pills */}
+          {/* AI Clinical Summary Display with Visual Blocks & Biomarkers */}
           {aiSummary && (
             <div className="mt-10 rounded-3xl border border-blue-200 bg-gradient-to-br from-white via-blue-50/40 to-indigo-50/30 p-7 shadow-lg shadow-blue-500/5">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-200/60 pb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-600 text-xl text-white shadow-xs">
-                    🤖
+                    🩺
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-900">
-                      xAI Grok Deep Clinical Assessment
+                      MediBridge Clinical Differential Assessment
                     </h3>
                     <p className="text-[11px] text-slate-500">
-                      Automated multi-modal clinical triage synthesis
+                      Evidence-based clinical intelligence and biomarker extraction
                     </p>
                   </div>
                 </div>
@@ -509,7 +627,7 @@ function PatientDetailsForm() {
               <div className="mt-6 space-y-4 text-sm">
                 <div className="rounded-2xl bg-white p-4 border border-blue-100 shadow-xs">
                   <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                    Chief Complaint
+                    Primary Clinical Presentation
                   </span>
                   <p className="mt-1 text-base font-bold text-slate-900">
                     {aiSummary.chief_complaint}
@@ -519,7 +637,7 @@ function PatientDetailsForm() {
                 {aiSummary.clinical_observations && (
                   <div className="rounded-2xl bg-white p-4 border border-blue-100 shadow-xs">
                     <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                      Deep Clinical Observations
+                      Pathophysiological Narrative
                     </span>
                     <p className="mt-1 text-xs text-slate-700 leading-relaxed whitespace-pre-line">
                       {aiSummary.clinical_observations}
@@ -527,31 +645,108 @@ function PatientDetailsForm() {
                   </div>
                 )}
 
-                {aiSummary.diagnostic_findings && (
+                {/* Suspected Conditions */}
+                {aiSummary.suspected_conditions && aiSummary.suspected_conditions.length > 0 && (
                   <div className="rounded-2xl bg-white p-4 border border-blue-100 shadow-xs">
                     <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                      Diagnostic Findings & Imaging
+                      Differential Diagnoses (Ranked by Suspicion)
                     </span>
-                    <p className="mt-1 text-xs text-slate-700 leading-relaxed whitespace-pre-line">
-                      {aiSummary.diagnostic_findings}
-                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {aiSummary.suspected_conditions.map((item, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center rounded-xl border border-blue-200 bg-blue-50/80 px-3 py-1 text-xs font-bold text-blue-900"
+                        >
+                          {idx + 1}. {item}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {aiSummary.key_information.length > 0 && (
-                  <div className="rounded-2xl bg-white p-4 border border-blue-100 shadow-xs">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-blue-700">
-                      Key Clinical Indicators
+                {/* Recommended Investigations */}
+                {aiSummary.recommended_investigations && aiSummary.recommended_investigations.length > 0 && (
+                  <div className="rounded-2xl bg-white p-4 border border-indigo-100 shadow-xs">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700">
+                      Recommended Confirmatory Investigations
                     </span>
                     <div className="mt-2.5 flex flex-wrap gap-2">
-                      {aiSummary.key_information.map((item, idx) => (
+                      {aiSummary.recommended_investigations.map((item, idx) => (
                         <span
                           key={idx}
-                          className="inline-flex items-center rounded-xl border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-800"
+                          className="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50/80 px-3 py-1 text-xs font-semibold text-indigo-900"
                         >
-                          • {item}
+                          🧪 {item}
                         </span>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Laboratory Biomarkers Table */}
+                {((aiSummary.biomarkers && aiSummary.biomarkers.length > 0) ||
+                  (aiSummary.laboratory_biomarkers && aiSummary.laboratory_biomarkers.length > 0)) && (
+                  <div className="rounded-2xl bg-white p-4 border border-rose-100 shadow-xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <span className="text-[11px] font-black uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
+                        <span>🩸</span>
+                        <span>Extracted Laboratory Biomarkers</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500">
+                        From Blood Report
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {(aiSummary.biomarkers || aiSummary.laboratory_biomarkers || []).map((bio, idx) => {
+                        const name = bio.name || bio.parameter || "Biomarker";
+                        const ref = bio.reference || bio.reference_range || "Standard";
+                        const isCritical = String(bio.status).toLowerCase().includes("crit");
+                        const isHigh = String(bio.status).toLowerCase().includes("high");
+                        const isLow = String(bio.status).toLowerCase().includes("low");
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-xl p-3 border text-xs ${
+                              isCritical
+                                ? "bg-rose-50 border-rose-300"
+                                : isHigh
+                                ? "bg-amber-50 border-amber-300"
+                                : isLow
+                                ? "bg-blue-50 border-blue-300"
+                                : "bg-slate-50 border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-slate-900">{name}</span>
+                              <span
+                                className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                                  isCritical
+                                    ? "bg-rose-600 text-white animate-pulse"
+                                    : isHigh
+                                    ? "bg-amber-500 text-white"
+                                    : isLow
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-emerald-600 text-white"
+                                }`}
+                              >
+                                {isCritical
+                                  ? "🚨 CRITICAL"
+                                  : isHigh
+                                  ? "▲ HIGH"
+                                  : isLow
+                                  ? "▼ LOW"
+                                  : "NORMAL"}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[11px] text-slate-600">
+                              <span>Value: <strong className="text-slate-900">{bio.value}</strong></span>
+                              <span className="text-[10px] text-slate-400">Ref: {ref}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -577,7 +772,7 @@ function PatientDetailsForm() {
       </main>
 
       <footer className="border-t border-slate-200/80 bg-white py-6 text-center text-xs text-slate-500">
-        MediBridge AI · Real-Time Clinical Intake with xAI Grok & Sarvam OCR
+        MediBridge AI · Real-Time Clinical Intake with AI Diagnostic Reasoning & Sarvam OCR
       </footer>
     </div>
   );

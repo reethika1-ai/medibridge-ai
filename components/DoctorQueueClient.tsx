@@ -54,6 +54,7 @@ export type AppointmentItem = {
   longitude?: string | number | null;
   prescription_url?: string | null;
   report_url?: string | null;
+  blood_report_url?: string | null;
   document_url?: string | null;
   report_public_id: string | null;
   created_at: string;
@@ -81,6 +82,7 @@ export type AppointmentItem = {
     eta_mins?: number | null;
     prescription_url?: string | null;
     report_url?: string | null;
+  blood_report_url?: string | null;
     document_url?: string | null;
     mode?: string | null;
     location?: string | null;
@@ -296,6 +298,11 @@ export default function DoctorQueueClient({
       ? `https://res.cloudinary.com/igssaucs/image/upload/${selectedAppointment.report_public_id}`
       : selectedAppointment?.document_url || selectedAppointment?.parsed_summary?.document_url || null);
 
+  const selectedBloodReportUrl =
+    selectedAppointment?.blood_report_url ||
+    selectedAppointment?.parsed_summary?.blood_report_url ||
+    null;
+
   // Normalize extracted medications array
   const rawMeds = selectedAppointment?.parsed_summary?.extracted_medications || [];
   const normalizedMeds: ExtractedMedication[] = rawMeds.map((m: any) => {
@@ -325,7 +332,40 @@ export default function DoctorQueueClient({
   const summaryObj = selectedAppointment?.parsed_summary;
   const clinicalSynthesis = summaryObj?.clinical_synthesis;
   const radiologyFindings = summaryObj?.radiology_findings;
-  const biomarkers = summaryObj?.laboratory_biomarkers || [];
+  const suspectedConditions: string[] =
+    summaryObj?.suspected_conditions ||
+    clinicalSynthesis?.differential_indicators ||
+    summaryObj?.key_information ||
+    [];
+
+  const recommendedInvestigations: string[] =
+    summaryObj?.recommended_investigations ||
+    [];
+
+  const recommendedMedications: string[] =
+    summaryObj?.recommended_medications ||
+    [];
+
+  const rawBiomarkersList =
+    summaryObj?.biomarkers ||
+    summaryObj?.laboratory_biomarkers ||
+    [];
+
+  const normalizedBiomarkers = rawBiomarkersList.map((b: any) => {
+    const name = b.name || b.parameter || "Biomarker";
+    const value = b.value || "--";
+    const reference = b.reference || b.reference_range || "Clinical Standard";
+    let status: "Normal" | "High" | "Low" | "Critical" = "Normal";
+    const rawStatus = String(b.status || "").toLowerCase();
+    if (rawStatus.includes("crit")) status = "Critical";
+    else if (rawStatus.includes("high")) status = "High";
+    else if (rawStatus.includes("low")) status = "Low";
+    else status = "Normal";
+
+    return { name, value, reference, status };
+  });
+
+  const biomarkers = normalizedBiomarkers;
 
   const primaryPresentation =
     clinicalSynthesis?.primary_presentation ||
@@ -462,6 +502,7 @@ export default function DoctorQueueClient({
                     apt.parsed_summary?.report_url ||
                     apt.report_public_id ||
                     apt.document_url;
+                  const blood = apt.blood_report_url || apt.parsed_summary?.blood_report_url;
 
                   return (
                     <React.Fragment key={apt.token}>
@@ -615,21 +656,26 @@ export default function DoctorQueueClient({
 
                         {/* Multi-Document Indicators */}
                         <td className="px-6 py-4 text-xs">
-                          {rx && rep ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-cyan-300 bg-cyan-950/60 px-2.5 py-1 rounded-xl border border-cyan-800/60">
-                              📄 Rx + 🩻 Report
-                            </span>
-                          ) : rx ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-blue-300 bg-blue-950/60 px-2.5 py-1 rounded-xl border border-blue-800/60">
-                              📄 Rx Attached
-                            </span>
-                          ) : rep ? (
-                            <span className="inline-flex items-center gap-1 font-bold text-indigo-300 bg-indigo-950/60 px-2.5 py-1 rounded-xl border border-indigo-800/60">
-                              🩻 Report Attached
-                            </span>
-                          ) : (
-                            <span className="text-slate-500 text-xs">No files</span>
-                          )}
+                          <div className="flex flex-wrap items-center gap-1">
+                            {rx && (
+                              <span className="inline-flex items-center gap-1 font-bold text-blue-300 bg-blue-950/60 px-2 py-0.5 rounded-lg border border-blue-800/60 text-[10px]">
+                                📄 Rx
+                              </span>
+                            )}
+                            {blood && (
+                              <span className="inline-flex items-center gap-1 font-bold text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded-lg border border-rose-800/60 text-[10px]">
+                                🩸 Blood
+                              </span>
+                            )}
+                            {rep && (
+                              <span className="inline-flex items-center gap-1 font-bold text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded-lg border border-indigo-800/60 text-[10px]">
+                                🩻 Scan
+                              </span>
+                            )}
+                            {!rx && !blood && !rep && (
+                              <span className="text-slate-500 text-xs">No files</span>
+                            )}
+                          </div>
                         </td>
 
                         <td className="px-6 py-4 text-right">
@@ -867,20 +913,62 @@ export default function DoctorQueueClient({
                       In-Depth Evaluation Narrative
                     </span>
                     {inDepthEvaluation}
+                    {!inDepthEvaluation.includes("Physician assessment required. AI generated differential analysis.") && (
+                      <p className="mt-2 text-[11px] font-semibold text-amber-300/90 italic">
+                        Physician assessment required. AI generated differential analysis.
+                      </p>
+                    )}
                   </div>
 
-                  {differentialIndicators.length > 0 && (
+                  {suspectedConditions.length > 0 && (
                     <div>
                       <span className="text-[10px] font-bold uppercase text-slate-400">
-                        Differential Clinical Indicators
+                        Differential Diagnoses (Ranked by Suspicion)
                       </span>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {differentialIndicators.map((indicator, idx) => (
+                        {suspectedConditions.map((condition, idx) => (
                           <span
                             key={idx}
-                            className="rounded-lg bg-blue-950/60 px-2.5 py-1 text-xs font-medium text-blue-200 border border-blue-800/60"
+                            className="rounded-lg bg-blue-950/80 px-2.5 py-1 text-xs font-bold text-blue-200 border border-blue-800/80 shadow-xs"
                           >
-                            • {indicator}
+                            <span className="text-blue-400 font-mono mr-1">#{idx + 1}</span>
+                            {condition}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendedInvestigations.length > 0 && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Recommended Confirmatory Investigations
+                      </span>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {recommendedInvestigations.map((inv, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-lg bg-indigo-950/70 px-2.5 py-1 text-xs font-medium text-indigo-200 border border-indigo-800/60"
+                          >
+                            🧪 {inv}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {recommendedMedications.length > 0 && (
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-slate-400">
+                        Supportive Pharmacotherapy to Consider
+                      </span>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {recommendedMedications.map((med, idx) => (
+                          <span
+                            key={idx}
+                            className="rounded-lg bg-teal-950/70 px-2.5 py-1 text-xs font-medium text-teal-200 border border-teal-800/60"
+                          >
+                            💊 {med}
                           </span>
                         ))}
                       </div>
@@ -1031,55 +1119,108 @@ export default function DoctorQueueClient({
               </div>
 
               {/* TIER 5: 🔬 CRITICAL LABORATORY BIOMARKERS */}
-              <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-inner">
+              <div className="rounded-3xl border border-rose-500/30 bg-gradient-to-tr from-slate-950 via-slate-900 to-rose-950/20 p-5 shadow-inner">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🔬</span>
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-300">
-                      Critical Laboratory Biomarkers
+                    <span className="text-xs font-black uppercase tracking-wider text-rose-300">
+                      Critical Laboratory Biomarkers & Lab Panels
                     </span>
                   </div>
-                  <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-400">
-                    Clinical Lab Values
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {selectedBloodReportUrl && (
+                      <span className="rounded-full bg-rose-950 border border-rose-700/60 px-2.5 py-0.5 text-[10px] font-black text-rose-300 flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+                        Blood Report Attached
+                      </span>
+                    )}
+                    <span className="rounded-full bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-400">
+                      {normalizedBiomarkers.length} Parameters
+                    </span>
+                  </div>
                 </div>
 
+                {/* Attached Blood Report Action Bar */}
+                {selectedBloodReportUrl && (
+                  <div className="mt-3 flex items-center justify-between rounded-2xl bg-rose-950/40 p-3 border border-rose-500/30 text-xs">
+                    <span className="font-semibold text-rose-200 flex items-center gap-1.5">
+                      <span>🩸</span>
+                      <span>Recent Blood Report Panel (CBC / LFT / KFT) attached</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setPreviewDocModal(selectedBloodReportUrl)}
+                        className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3 py-1.5 font-bold text-white text-[11px] shadow-sm transition active:scale-95"
+                      >
+                        👁️ Quick Inspect
+                      </button>
+                      <a
+                        href={selectedBloodReportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="rounded-xl border border-rose-500/40 bg-rose-950/60 hover:bg-rose-900/60 px-3 py-1.5 font-bold text-rose-200 text-[11px] transition"
+                      >
+                        📥 Download
+                      </a>
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4">
-                  {biomarkers.length > 0 ? (
+                  {normalizedBiomarkers.length > 0 ? (
                     <div className="grid gap-2.5 sm:grid-cols-2">
-                      {biomarkers.map((bio, idx) => (
-                        <div
-                          key={idx}
-                          className="rounded-2xl bg-slate-900/90 p-3.5 border border-slate-800 text-xs"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-white">{bio.parameter}</span>
-                            <span
-                              className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
-                                bio.status === "HIGH"
-                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                                  : bio.status === "LOW"
-                                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
-                                  : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-                              }`}
-                            >
-                              {bio.status === "HIGH"
-                                ? "▲ [HIGH]"
-                                : bio.status === "LOW"
-                                ? "▼ [LOW]"
-                                : "[NORMAL]"}
-                            </span>
+                      {normalizedBiomarkers.map((bio: any, idx: number) => {
+                        const isCrit = bio.status === "Critical";
+                        const isHigh = bio.status === "High";
+                        const isLow = bio.status === "Low";
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`rounded-2xl p-3.5 border text-xs transition-all ${
+                              isCrit
+                                ? "bg-rose-950/70 border-rose-500/70 shadow-lg shadow-rose-950/60"
+                                : isHigh
+                                ? "bg-amber-950/40 border-amber-500/40"
+                                : isLow
+                                ? "bg-blue-950/40 border-blue-500/40"
+                                : "bg-slate-900/90 border-slate-800"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-white text-xs">{bio.name}</span>
+                              <span
+                                className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                                  isCrit
+                                    ? "bg-rose-500/30 text-rose-200 border border-rose-400 animate-pulse"
+                                    : isHigh
+                                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                    : isLow
+                                    ? "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                }`}
+                              >
+                                {isCrit
+                                  ? "🚨 [CRITICAL]"
+                                  : isHigh
+                                  ? "▲ [HIGH]"
+                                  : isLow
+                                  ? "▼ [LOW]"
+                                  : "[NORMAL]"}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+                              <span>Value: <strong className="text-white font-mono">{bio.value}</strong></span>
+                              <span className="text-[10px] text-slate-400">Ref: {bio.reference}</span>
+                            </div>
                           </div>
-                          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-                            <span>Value: <strong className="text-white">{bio.value}</strong></span>
-                            <span>Ref: {bio.reference_range}</span>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="rounded-2xl bg-slate-950/60 p-4 border border-slate-800 text-xs text-slate-400 text-center">
-                      No abnormal diagnostic laboratory biomarkers detected in this intake.
+                      No abnormal diagnostic laboratory biomarkers detected in this intake. Attach a Recent Blood Report to extract automated biomarker telemetry.
                     </div>
                   )}
                 </div>
@@ -1092,22 +1233,40 @@ export default function DoctorQueueClient({
                 </span>
 
                 {/* Document Access Actions */}
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   {selectedPrescriptionUrl ? (
                     <a
                       href={selectedPrescriptionUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold px-4 py-3.5 text-xs shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 text-center"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-bold px-3.5 py-3 text-xs shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95 text-center"
                     >
                       <span className="text-base">📄</span>
-                      <span>View Handwritten Prescription</span>
+                      <span>Handwritten Rx Slip</span>
                       <span className="text-blue-200">↗</span>
                     </a>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-4 py-3.5 text-xs text-center">
+                    <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-3 py-3 text-xs text-center">
                       <span>📄</span>
-                      <span>Prescription: Not provided</span>
+                      <span>Rx: Not attached</span>
+                    </div>
+                  )}
+
+                  {selectedBloodReportUrl ? (
+                    <a
+                      href={selectedBloodReportUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold px-3.5 py-3 text-xs shadow-lg shadow-rose-500/20 transition-all duration-200 active:scale-95 text-center"
+                    >
+                      <span className="text-base">🩸</span>
+                      <span>Recent Blood Report</span>
+                      <span className="text-rose-200">↗</span>
+                    </a>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-3 py-3 text-xs text-center">
+                      <span>🩸</span>
+                      <span>Blood: Not attached</span>
                     </div>
                   )}
 
@@ -1116,16 +1275,16 @@ export default function DoctorQueueClient({
                       href={selectedReportUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold px-4 py-3.5 text-xs shadow-lg shadow-indigo-500/20 transition-all duration-200 active:scale-95 text-center"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-bold px-3.5 py-3 text-xs shadow-lg shadow-indigo-500/20 transition-all duration-200 active:scale-95 text-center"
                     >
                       <span className="text-base">🩻</span>
-                      <span>View & Download Full Radiology/Lab Report</span>
+                      <span>Radiology Scan</span>
                       <span className="text-indigo-200">↗</span>
                     </a>
                   ) : (
-                    <div className="flex items-center justify-center gap-2 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-4 py-3.5 text-xs text-center">
+                    <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-slate-850 border border-slate-800 text-slate-500 font-semibold px-3 py-3 text-xs text-center">
                       <span>🩻</span>
-                      <span>Medical Report / X-Ray: Not provided</span>
+                      <span>Scan: Not attached</span>
                     </div>
                   )}
                 </div>

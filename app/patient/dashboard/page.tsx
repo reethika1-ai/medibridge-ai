@@ -17,6 +17,7 @@ type AppointmentRecord = {
   urgent: boolean;
   prescription_url?: string | null;
   report_url?: string | null;
+  blood_report_url?: string | null;
   document_url?: string | null;
   report_public_id: string | null;
   created_at: string;
@@ -25,6 +26,7 @@ type AppointmentRecord = {
     status?: string;
     prescription_url?: string | null;
     report_url?: string | null;
+  blood_report_url?: string | null;
     document_url?: string | null;
   } | null;
 };
@@ -137,6 +139,11 @@ function PatientDashboardContent() {
     (appointment?.report_public_id
       ? `https://res.cloudinary.com/igssaucs/image/upload/${appointment.report_public_id}`
       : appointment?.document_url || appointment?.parsed_summary?.document_url || null);
+
+  const bloodUrl =
+    appointment?.blood_report_url ||
+    appointment?.parsed_summary?.blood_report_url ||
+    null;
 
   const currentStatus = appointment?.status || "Waiting";
 
@@ -329,6 +336,15 @@ function PatientDashboardContent() {
                   </div>
                   <span className="text-[11px] font-bold text-emerald-600">
                     {rxUrl ? t("attached_verified") : "Ready for Upload"}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>🩸</span>
+                    <span className="font-bold text-slate-700">Recent Blood Report</span>
+                  </div>
+                  <span className={`text-[11px] font-bold ${bloodUrl ? "text-rose-600" : "text-slate-400"}`}>
+                    {bloodUrl ? t("attached_verified") : "Ready for Upload"}
                   </span>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 flex items-center justify-between">

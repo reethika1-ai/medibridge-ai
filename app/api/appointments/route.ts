@@ -47,6 +47,8 @@ export async function GET(req: Request) {
         (item.report_public_id
           ? `https://res.cloudinary.com/igssaucs/image/upload/${item.report_public_id}`
           : null);
+      const blood_report_url =
+        item.blood_report_url || parsedSummary?.blood_report_url || null;
       const document_url =
         item.document_url ||
         parsedSummary?.document_url ||
@@ -62,6 +64,7 @@ export async function GET(req: Request) {
         status,
         parsed_summary: parsedSummary,
         prescription_url,
+        blood_report_url,
         report_url,
         document_url,
         age,
@@ -161,6 +164,7 @@ export async function POST(req: Request) {
     summaryObj.status = body.status || summaryObj.status || "Waiting";
     if (body.prescription_url) summaryObj.prescription_url = body.prescription_url;
     if (body.report_url) summaryObj.report_url = body.report_url;
+    if (body.blood_report_url) summaryObj.blood_report_url = body.blood_report_url;
     if (body.document_url) summaryObj.document_url = body.document_url;
     if (body.age !== undefined) summaryObj.age = body.age;
     if (body.gender !== undefined) summaryObj.gender = body.gender;
@@ -275,6 +279,7 @@ export async function PATCH(req: Request) {
 
     if (body.prescription_url) summaryObj.prescription_url = body.prescription_url;
     if (body.report_url) summaryObj.report_url = body.report_url;
+    if (body.blood_report_url) summaryObj.blood_report_url = body.blood_report_url;
     if (body.document_url) summaryObj.document_url = body.document_url;
     if (body.age !== undefined) summaryObj.age = body.age;
     if (body.gender !== undefined) summaryObj.gender = body.gender;

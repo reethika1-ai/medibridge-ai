@@ -216,13 +216,16 @@ export default function AppointmentPage() {
     };
   }, [date]);
 
-  // Dual File Upload States
+  // Triple Document Upload States
   const [prescriptionFile, setPrescriptionFile] = useState<File | null>(null);
+  const [bloodReportFile, setBloodReportFile] = useState<File | null>(null);
   const [reportFile, setReportFile] = useState<File | null>(null);
   const [isPrescriptionDragging, setIsPrescriptionDragging] = useState(false);
+  const [isBloodDragging, setIsBloodDragging] = useState(false);
   const [isReportDragging, setIsReportDragging] = useState(false);
 
   const prescriptionInputRef = useRef<HTMLInputElement>(null);
+  const bloodReportInputRef = useRef<HTMLInputElement>(null);
   const reportInputRef = useRef<HTMLInputElement>(null);
 
   // Submission States
@@ -264,6 +267,17 @@ export default function AppointmentPage() {
     setPrescriptionFile(file);
   }
 
+  function handleBloodSelect(file: File | null) {
+    if (!file) return;
+    const err = validateFile(file);
+    if (err) {
+      setErrorMsg(`Blood Report: ${err}`);
+      return;
+    }
+    setErrorMsg("");
+    setBloodReportFile(file);
+  }
+
   function handleReportSelect(file: File | null) {
     if (!file) return;
     const err = validateFile(file);
@@ -278,7 +292,7 @@ export default function AppointmentPage() {
   async function uploadToCloudinary(
     file: File,
     token: string,
-    docType: "prescription" | "report"
+    docType: "prescription" | "report" | "blood_report"
   ): Promise<{ secure_url: string; public_id: string; extracted_text: string }> {
     const formData = new FormData();
     formData.append("file", file);
@@ -352,6 +366,10 @@ export default function AppointmentPage() {
       let prescription_public_id: string | null = null;
       let prescription_text = "";
 
+      let blood_report_url: string | null = null;
+      let blood_report_public_id: string | null = null;
+      let blood_report_text = "";
+
       let report_url: string | null = null;
       let report_public_id: string | null = null;
       let report_text = "";
@@ -365,7 +383,16 @@ export default function AppointmentPage() {
         prescription_text = rxUpload.extracted_text;
       }
 
-      // 2. Upload Medical Reports & Scans if provided
+      // 2. Upload Recent Blood Reports if provided
+      if (bloodReportFile) {
+        setLoadingStep("Uploading recent blood reports & lab panels to vault...");
+        const bloodUpload = await uploadToCloudinary(bloodReportFile, token, "blood_report");
+        blood_report_url = bloodUpload.secure_url;
+        blood_report_public_id = bloodUpload.public_id;
+        blood_report_text = bloodUpload.extracted_text;
+      }
+
+      // 3. Upload Medical Reports & Scans if provided
       if (reportFile) {
         setLoadingStep("Uploading medical reports & imaging to Cloudinary vault...");
         const reportUpload = await uploadToCloudinary(reportFile, token, "report");
@@ -375,10 +402,10 @@ export default function AppointmentPage() {
       }
 
       // Backward compatibility mapping for single document_url
-      const document_url = report_url || prescription_url || null;
+      const document_url = report_url || blood_report_url || prescription_url || null;
 
-      // 3. Deep Clinical Analysis via xAI Grok & Sarvam OCR Agent
-      setLoadingStep("Synthesizing deep clinical assessment with xAI Grok...");
+      // 4. Deep Clinical Analysis via MediBridge Clinical Intelligence Engine
+      setLoadingStep("Synthesizing deep clinical assessment with AI Engine...");
       let triageData: any = null;
       try {
         const triageRes = await fetch("/api/triage", {
@@ -387,9 +414,11 @@ export default function AppointmentPage() {
           body: JSON.stringify({
             symptoms: symptoms.trim(),
             prescription_url,
+            blood_report_url,
             report_url,
             document_url,
             prescription_text,
+            blood_report_text,
             report_text,
             patient_info: {
               name: name.trim(),
@@ -408,7 +437,7 @@ export default function AppointmentPage() {
         console.warn("Triage API error, using safe fallback:", err);
       }
 
-      // 4. Register Appointment in Supabase
+      // 5. Register Appointment in Supabase
       setLoadingStep("Registering appointment & issuing token in Supabase...");
       const res = await fetch("/api/appointments", {
         method: "POST",
@@ -422,16 +451,22 @@ export default function AppointmentPage() {
           department: `${department} - ${doctor.split(",")[0]}`,
           appointment_date: `${date} @ ${time}`,
           symptoms: symptoms.trim(),
-          urgent: triageData?.urgency_level === "Urgent" || Boolean(triageData?.urgent_flag),
+          urgent:
+            triageData?.urgency_level === "URGENT" ||
+            triageData?.urgency_level === "CRITICAL_RED_ALERT" ||
+            triageData?.urgency_level === "Urgent" ||
+            Boolean(triageData?.urgent_flag),
           prescription_url,
+          blood_report_url,
           report_url,
           document_url,
-          report_public_id: report_public_id || prescription_public_id || null,
+          report_public_id:
+            report_public_id || blood_report_public_id || prescription_public_id || null,
           summary: triageData || {
             chief_complaint: symptoms.slice(0, 80),
             summary: symptoms,
             clinical_observations: symptoms,
-            urgency_level: "Normal",
+            urgency_level: "ROUTINE",
             status: "Waiting",
           },
           status: "Waiting",
@@ -797,7 +832,7 @@ export default function AppointmentPage() {
                 </p>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
+              <div className="grid gap-6 md:grid-cols-3">
                 {/* 1. Previous Prescriptions Box */}
                 <div className="flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-blue-50/20 to-slate-50/40 p-5 shadow-xs backdrop-blur-sm transition-all duration-200 hover:border-blue-400 hover:shadow-md">
                   <div>
@@ -853,21 +888,21 @@ export default function AppointmentPage() {
                       {prescriptionFile ? (
                         <div className="space-y-1">
                           <span className="text-2xl">✓</span>
-                          <p className="text-xs font-bold text-slate-900 truncate max-w-[220px]">
+                          <p className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
                             {prescriptionFile.name}
                           </p>
                           <p className="text-[10px] text-slate-500">
-                            {(prescriptionFile.size / (1024 * 1024)).toFixed(2)} MB · Ready for Upload
+                            {(prescriptionFile.size / (1024 * 1024)).toFixed(2)} MB · Ready
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-1">
                           <span className="text-2xl text-slate-400">📤</span>
                           <p className="text-xs font-bold text-slate-800">
-                            Click or drag prescription
+                            {t("click_or_drag_rx")}
                           </p>
                           <p className="text-[10px] text-slate-400">
-                            PDF, JPG, PNG up to 10MB
+                            {t("upload_specs")}
                           </p>
                         </div>
                       )}
@@ -878,7 +913,7 @@ export default function AppointmentPage() {
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                       <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        Attached: Rx File
+                        {t("attached_prefix")} Rx Note
                       </span>
                       <button
                         type="button"
@@ -888,13 +923,109 @@ export default function AppointmentPage() {
                         }}
                         className="text-xs font-bold text-rose-600 hover:underline"
                       >
-                        Remove
+                        {t("remove_file")}
                       </button>
                     </div>
                   )}
                 </div>
 
-                {/* 2. Medical Reports & Scans Box */}
+                {/* 2. Dedicated Recent Blood Reports / Lab Panels Box */}
+                <div className="flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-rose-50/20 to-slate-50/40 p-5 shadow-xs backdrop-blur-sm transition-all duration-200 hover:border-rose-400 hover:shadow-md">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-xl text-rose-700 shadow-inner">
+                          🩸
+                        </span>
+                        <div>
+                          <h4 className="text-sm font-bold text-slate-900">
+                            {t("blood_report_title") || "Recent Blood Reports"}
+                          </h4>
+                          <span className="text-[11px] text-slate-400">
+                            {t("blood_report_subtitle") || "CBC, LFT, KFT, Lipid Profile"}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200/60">
+                        Biomarkers
+                      </span>
+                    </div>
+
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setIsBloodDragging(true);
+                      }}
+                      onDragLeave={() => setIsBloodDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsBloodDragging(false);
+                        handleBloodSelect(e.dataTransfer.files?.[0] || null);
+                      }}
+                      onClick={() => bloodReportInputRef.current?.click()}
+                      className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-5 text-center transition-all ${
+                        isBloodDragging
+                          ? "border-rose-500 bg-rose-50/80 scale-[1.01]"
+                          : bloodReportFile
+                          ? "border-rose-400 bg-rose-50/40"
+                          : "border-slate-300 bg-white/70 hover:border-rose-400 hover:bg-rose-50/30"
+                      }`}
+                    >
+                      <input
+                        ref={bloodReportInputRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                        onChange={(e) =>
+                          handleBloodSelect(e.target.files?.[0] || null)
+                        }
+                        className="hidden"
+                      />
+
+                      {bloodReportFile ? (
+                        <div className="space-y-1">
+                          <span className="text-2xl">✓</span>
+                          <p className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
+                            {bloodReportFile.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            {(bloodReportFile.size / (1024 * 1024)).toFixed(2)} MB · Ready
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <span className="text-2xl text-slate-400">🩸</span>
+                          <p className="text-xs font-bold text-slate-800">
+                            {t("click_or_drag_blood") || "Click or drag blood report"}
+                          </p>
+                          <p className="text-[10px] text-slate-400">
+                            {t("upload_specs")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {bloodReportFile && (
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                      <span className="text-[11px] font-semibold text-rose-700 flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                        {t("attached_blood") || "Attached: Blood Report"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBloodReportFile(null);
+                        }}
+                        className="text-xs font-bold text-rose-600 hover:underline"
+                      >
+                        {t("remove_file")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Medical Reports & Scans Box */}
                 <div className="flex flex-col justify-between rounded-3xl border border-slate-200/90 bg-gradient-to-br from-white via-indigo-50/20 to-slate-50/40 p-5 shadow-xs backdrop-blur-sm transition-all duration-200 hover:border-indigo-400 hover:shadow-md">
                   <div>
                     <div className="flex items-center justify-between">
@@ -912,7 +1043,7 @@ export default function AppointmentPage() {
                         </div>
                       </div>
                       <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
-                        Imaging / Labs
+                        Imaging / X-Ray
                       </span>
                     </div>
 
@@ -949,21 +1080,21 @@ export default function AppointmentPage() {
                       {reportFile ? (
                         <div className="space-y-1">
                           <span className="text-2xl">✓</span>
-                          <p className="text-xs font-bold text-slate-900 truncate max-w-[220px]">
+                          <p className="text-xs font-bold text-slate-900 truncate max-w-[200px]">
                             {reportFile.name}
                           </p>
                           <p className="text-[10px] text-slate-500">
-                            {(reportFile.size / (1024 * 1024)).toFixed(2)} MB · Ready for Upload
+                            {(reportFile.size / (1024 * 1024)).toFixed(2)} MB · Ready
                           </p>
                         </div>
                       ) : (
                         <div className="space-y-1">
                           <span className="text-2xl text-slate-400">📁</span>
                           <p className="text-xs font-bold text-slate-800">
-                            Click or drag lab / scan file
+                            {t("click_or_drag_report")}
                           </p>
                           <p className="text-[10px] text-slate-400">
-                            PDF, JPG, PNG or DICOM scan
+                            {t("upload_specs")}
                           </p>
                         </div>
                       )}
@@ -974,7 +1105,7 @@ export default function AppointmentPage() {
                     <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                       <span className="text-[11px] font-semibold text-indigo-700 flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                        Attached: Lab/Scan Report
+                        {t("attached_prefix")} Scan / Report
                       </span>
                       <button
                         type="button"
@@ -984,7 +1115,7 @@ export default function AppointmentPage() {
                         }}
                         className="text-xs font-bold text-rose-600 hover:underline"
                       >
-                        Remove
+                        {t("remove_file")}
                       </button>
                     </div>
                   )}
