@@ -1093,12 +1093,14 @@ export default function DoctorQueueClient({
                         {selectedAppointment?.token?.startsWith("EMG-GATE") ||
                         selectedAppointment?.parsed_summary?.mode === "SELF_ARRIVAL"
                           ? "Vehicle / Inbound Notes"
-                          : "Live GPS Coordinates"}
+                          : "Live GPS & Landmark"}
                       </span>
                       <p className="mt-1 font-mono font-bold text-cyan-300 text-xs sm:text-sm truncate">
-                        {selectedAppointment?.parsed_summary?.vehicle_notes ||
-                          selectedAppointment?.parsed_summary?.location ||
-                          `${selectedAppointment?.parsed_summary?.latitude || "17.4435° N"}, ${selectedAppointment?.parsed_summary?.longitude || "78.3772° E"}`}
+                        {selectedAppointment?.parsed_summary?.manual_address
+                          ? `${selectedAppointment.parsed_summary.manual_address} · ${selectedAppointment?.parsed_summary?.location || ""}`
+                          : selectedAppointment?.parsed_summary?.vehicle_notes ||
+                            selectedAppointment?.parsed_summary?.location ||
+                            `${selectedAppointment?.parsed_summary?.latitude || "17.4435° N"}, ${selectedAppointment?.parsed_summary?.longitude || "78.3772° E"}`}
                       </p>
                     </div>
 
@@ -1109,6 +1111,18 @@ export default function DoctorQueueClient({
                       </p>
                     </div>
                   </div>
+
+                  {selectedAppointment?.parsed_summary?.manual_address && (
+                    <div className="mt-3 flex items-center justify-between rounded-xl bg-red-950/60 p-2.5 border border-red-500/30 text-xs">
+                      <span className="text-slate-300 flex items-center gap-1.5 font-bold">
+                        <span>📍</span>
+                        <span>Manual Landmark / Address:</span>
+                      </span>
+                      <span className="font-mono font-bold text-amber-300 truncate max-w-[280px]">
+                        {selectedAppointment.parsed_summary.manual_address}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="mt-3 flex items-center justify-between text-[11px] text-red-300">
                     <span>

@@ -32,6 +32,7 @@ export default function EmergencyModal({
 
   const [step, setStep] = useState<EmergencyStep>("SELECT");
   const [ambulanceLocation, setAmbulanceLocation] = useState("");
+  const [manualAddress, setManualAddress] = useState("");
   const [latitude, setLatitude] = useState("17.4435° N");
   const [longitude, setLongitude] = useState("78.3772° E");
   const [isGpsLoading, setIsGpsLoading] = useState(false);
@@ -51,6 +52,7 @@ export default function EmergencyModal({
       } else {
         setStep("SELECT");
         setAmbulanceLocation("");
+        setManualAddress("");
         setVehicleNotes("");
         setActiveTelemetry(null);
       }
@@ -112,7 +114,10 @@ export default function EmergencyModal({
     e.preventDefault();
     setIsSubmitting(true);
 
-    const loc = ambulanceLocation.trim() || `${latitude}, ${longitude}`;
+    const baseLoc = ambulanceLocation.trim() || `${latitude}, ${longitude}`;
+    const loc = manualAddress.trim()
+      ? `${manualAddress.trim()} (${baseLoc})`
+      : baseLoc;
 
     try {
       const res = await fetch("/api/emergency", {
@@ -121,6 +126,8 @@ export default function EmergencyModal({
         body: JSON.stringify({
           mode: "AMBULANCE",
           location: loc,
+          manual_address: manualAddress.trim() || undefined,
+          landmark: manualAddress.trim() || undefined,
           latitude,
           longitude,
           reported_by: "Bystander / Roadside Alert",
@@ -141,6 +148,7 @@ export default function EmergencyModal({
         latitude,
         longitude,
         location: loc,
+        manual_address: manualAddress.trim() || undefined,
         eta_mins: 5,
         mode: "AMBULANCE",
       });
@@ -164,6 +172,8 @@ export default function EmergencyModal({
         body: JSON.stringify({
           mode: "SELF_ARRIVAL",
           notes,
+          manual_address: manualAddress.trim() || undefined,
+          landmark: manualAddress.trim() || undefined,
           reported_by: "Incoming Patient / Relative",
         }),
       });
@@ -330,6 +340,20 @@ export default function EmergencyModal({
                 </div>
               </div>
 
+              {/* Landmark / Manual Address (Optional Fallback) */}
+              <div className="mt-3">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Landmark / Manual Address (Optional Fallback)
+                </label>
+                <input
+                  type="text"
+                  value={manualAddress}
+                  onChange={(e) => setManualAddress(e.target.value)}
+                  placeholder="e.g., Near Gachibowli flyover, opposite HP fuel station"
+                  className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none transition focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100"
+                />
+              </div>
+
               <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-xs space-y-2">
                 <div className="flex justify-between text-slate-600">
                   <span>GPS Lat/Lon:</span>
@@ -337,6 +361,14 @@ export default function EmergencyModal({
                     {latitude}, {longitude}
                   </span>
                 </div>
+                {manualAddress.trim() && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Manual Landmark:</span>
+                    <span className="font-bold text-slate-900 truncate max-w-[220px]">
+                      {manualAddress}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-600">
                   <span>Assigned Vehicle:</span>
                   <span className="font-bold text-slate-900">Smart AV-Ambulance #MED-09</span>
@@ -487,6 +519,19 @@ export default function EmergencyModal({
                   value={vehicleNotes}
                   onChange={(e) => setVehicleNotes(e.target.value)}
                   placeholder={t("vehicle_notes_placeholder")}
+                  className="mt-1.5 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-amber-800">
+                  Landmark / Manual Starting Point (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={manualAddress}
+                  onChange={(e) => setManualAddress(e.target.value)}
+                  placeholder="e.g., Inbound from Hitech City, opposite Cyber Towers"
                   className="mt-1.5 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 outline-none focus:border-amber-400 focus:bg-white focus:ring-2 focus:ring-amber-100"
                 />
               </div>

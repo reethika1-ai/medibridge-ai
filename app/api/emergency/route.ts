@@ -17,9 +17,15 @@ export async function POST(req: Request) {
       body.longitude !== undefined && body.longitude !== null
         ? String(body.longitude)
         : "78.3772° E";
-    const location =
+
+    const manualAddress = body.manual_address || body.landmark || "";
+    const rawLocation =
       body.location ||
       (body.latitude ? `${lat}, ${lon}` : "City Trauma Center Hub / GPS Fix");
+    const location = manualAddress
+      ? `${manualAddress} (${rawLocation})`
+      : rawLocation;
+
     const notes =
       body.notes ||
       (mode === "AMBULANCE"
@@ -38,12 +44,14 @@ export async function POST(req: Request) {
 
     const symptoms =
       mode === "AMBULANCE"
-        ? `[AMBULANCE DISPATCHED] Unit #MED-09 deployed to: ${location || `GPS (${lat},${lon})`}. Immediate trauma response required.`
-        : `[SELF-ARRIVAL GATE 1] Private vehicle inbound: ${notes || "Emergency Transit"}. Mobilize stretcher, Nurse Stephanie, and Trauma Bay 1.`;
+        ? `[AMBULANCE DISPATCHED] Unit #MED-09 deployed to: ${location || `GPS (${lat},${lon})`}${manualAddress ? ` | Landmark: ${manualAddress}` : ""}. Immediate trauma response required.`
+        : `[SELF-ARRIVAL GATE 1] Private vehicle inbound: ${notes || "Emergency Transit"}${manualAddress ? ` | Landmark: ${manualAddress}` : ""}. Mobilize stretcher, Nurse Stephanie, and Trauma Bay 1.`;
 
     const clinicalSummaryObj = {
       mode: mode || "AMBULANCE",
       location: location || `${lat}, ${lon}`,
+      manual_address: manualAddress || undefined,
+      landmark: manualAddress || undefined,
       ambulance_id: "Smart AV-Ambulance #MED-09",
       unit_assigned:
         mode === "AMBULANCE"
@@ -108,6 +116,7 @@ export async function POST(req: Request) {
           : "Gate 1 ER Rapid Mobilization Unit",
       eta_mins: 5,
       location,
+      manual_address: manualAddress || undefined,
       notes,
       latitude: lat,
       longitude: lon,

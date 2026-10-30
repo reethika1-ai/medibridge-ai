@@ -442,6 +442,15 @@ export default function HospitalPortalClient({
                         <span className="font-mono font-bold text-rose-700 text-right">{loc}</span>
                       </div>
 
+                      {apt.parsed_summary?.manual_address && (
+                        <div className="flex items-start justify-between gap-4">
+                          <span className="text-slate-500">Manual Landmark:</span>
+                          <span className="font-bold text-amber-700 text-right">
+                            📍 {apt.parsed_summary.manual_address}
+                          </span>
+                        </div>
+                      )}
+
                       <div className="flex items-center justify-between">
                         <span className="text-slate-500">Assigned Fleet Vehicle:</span>
                         <span className="font-bold text-slate-900">{unit}</span>
