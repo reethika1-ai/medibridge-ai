@@ -31,25 +31,29 @@ export async function POST(req: Request) {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    // Dispatch live SMS via Fast2SMS OTP route
+    // Dispatch live SMS via Fast2SMS Quick Route (instant non-DLT / no KYC required)
     const fast2SmsKey = process.env.FAST2SMS_API_KEY;
     if (fast2SmsKey) {
       try {
+        const otpMessage = `Your MediBridge AI verification code is ${otp}. Valid for 5 minutes.`;
+
         const smsRes = await fetch("https://www.fast2sms.com/dev/bulkV2", {
           method: "POST",
           headers: {
-            authorization: fast2SmsKey,
+            authorization: fast2SmsKey.trim(),
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            route: "otp",
-            variables_values: otp,
+            route: "q",
+            message: otpMessage,
             numbers: cleanPhone,
+            language: "english",
+            flash: 0,
           }),
         });
 
         const smsData = await smsRes.json().catch(() => ({}));
-        console.log(`[Fast2SMS OTP Dispatch to ${cleanPhone}]:`, smsData);
+        console.log(`[Fast2SMS Quick OTP Dispatch to ${cleanPhone}]:`, smsData);
       } catch (smsErr) {
         console.error("Fast2SMS API dispatch error:", smsErr);
         // Continue without blocking, in case network or sandbox environment restricts external API
@@ -71,4 +75,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
